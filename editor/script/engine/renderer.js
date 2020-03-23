@@ -104,7 +104,7 @@ function imageDataFromImageSource(imageSource, pal, col) {
 						img.data[pxl + 0] = backgroundColor.r;
 						img.data[pxl + 1] = backgroundColor.g;
 						img.data[pxl + 2] = backgroundColor.b;
-						img.data[pxl + 3] = 255;
+						img.data[pxl + 3] = 0;
 						if (px != 0) {
 							var testColor = getPaletteColor(pal, px); //feels kinda hacky we'd much prefer to get it pull it's color from an array with the pallete's colors popped in... but we can't get that to work
 							img.data[pxl + 0] = testColor.r;

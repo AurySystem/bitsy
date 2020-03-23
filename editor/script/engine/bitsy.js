@@ -561,6 +561,43 @@ function update() {
 		else if (!isEnding) {
 			moveSprites(); // TODO : I probably need to remove this..
 		}
+        //do not move to master branch, gravity stuff and jump height stuff
+        if (jumpTimer != -1) {
+            var temp = jumpTimer - deltaTime;
+            if (temp >= 0) {
+                jumpTimer -= deltaTime;
+            }
+            else if (temp < 0 && jumpTimer > 0) {
+                jumpTimer = 0;
+            }
+            if (jumpTimer == 0) {
+                curPlayerDirection = Direction.None;
+                movePlayer(Direction.Up);
+                jumpTimer = -1;
+            }
+        }
+        else {
+            if (isWallAtSide(gravDirection, 1)) {
+                gravTimer = -1;
+            }
+            else if (gravTimer == -1) {
+                gravTimer = 180;
+            }
+            if (gravTimer != -1) {
+                var temp = gravTimer - deltaTime;
+                if (temp >= 0) {
+                    gravTimer -= deltaTime;
+                }
+                else if (temp < 0 && gravTimer > 0) {
+                    gravTimer = 0;
+                }
+                if (gravTimer == 0) {
+                    curPlayerDirection = Direction.None;
+                    movePlayer(gravDirection);
+                    gravTimer = 90;
+                }
+            }
+        }
 
 		// keep moving avatar if player holds down button
 		if( !dialogBuffer.IsActive() && !isEnding )
@@ -620,14 +657,14 @@ function updateInput() {
 		/* WALK */
 		var prevPlayerDirection = curPlayerDirection;
 
-		if ( input.isKeyDown( key.left ) || input.isKeyDown( key.a ) || input.swipeLeft() ) {
-			curPlayerDirection = Direction.Left;
-		}
-		else if ( input.isKeyDown( key.right ) || input.isKeyDown( key.d ) || input.swipeRight() ) {
-			curPlayerDirection = Direction.Right;
-		}
-		else if ( input.isKeyDown( key.up ) || input.isKeyDown( key.w ) || input.swipeUp() ) {
-			curPlayerDirection = Direction.Up;
+        if (input.isKeyDown(key.left) || input.isKeyDown(key.a) || input.swipeLeft()) {
+            curPlayerDirection = Direction.Left;
+        }
+        else if (input.isKeyDown(key.right) || input.isKeyDown(key.d) || input.swipeRight()) {
+            curPlayerDirection = Direction.Right;
+        }
+        else if (input.isKeyDown(key.up) || input.isKeyDown(key.w) || input.swipeUp()) {
+            curPlayerDirection = Direction.Up;
 		}
 		else if ( input.isKeyDown( key.down ) || input.isKeyDown( key.s ) || input.swipeDown() ) {
 			curPlayerDirection = Direction.Down;
@@ -636,9 +673,13 @@ function updateInput() {
 			curPlayerDirection = Direction.None;
 		}
 
-		if (curPlayerDirection != Direction.None && curPlayerDirection != prevPlayerDirection) {
-			movePlayer( curPlayerDirection );
-			playerHoldToMoveTimer = 500;
+        if (curPlayerDirection != Direction.None && curPlayerDirection != prevPlayerDirection) {
+            if (curPlayerDirection == Direction.Up && isWallAtSide(Direction.Down, 1)) {
+                jumpTimer = 80;
+            }
+            movePlayer(curPlayerDirection);
+            playerHoldToMoveTimer = 500;
+            console.log(jumpTimer);
 		}
 	}
 }
@@ -789,6 +830,9 @@ var Direction = {
 };
 
 var curPlayerDirection = Direction.None;
+var jumpTimer = -1;
+var gravTimer = -1;
+var gravDirection = Direction.Down;
 var playerHoldToMoveTimer = 0;
 
 var InputManager = function() {
@@ -991,28 +1035,58 @@ function movePlayer(direction) {
 
 	var spr = null;
 
-	if ( curPlayerDirection == Direction.Left && !(spr = getSpriteLeft()) && !isWallLeft()) {
-		player().x -= 1;
-		didPlayerMoveThisFrame = true;
-	}
-	else if ( curPlayerDirection == Direction.Right && !(spr = getSpriteRight()) && !isWallRight()) {
-		player().x += 1;
-		didPlayerMoveThisFrame = true;
-	}
-	else if ( curPlayerDirection == Direction.Up && !(spr = getSpriteUp()) && !isWallUp()) {
-		player().y -= 1;
-		didPlayerMoveThisFrame = true;
-	}
-	else if ( curPlayerDirection == Direction.Down && !(spr = getSpriteDown()) && !isWallDown()) {
-		player().y += 1;
-		didPlayerMoveThisFrame = true;
-	}
-	
-	var ext = getExit( player().room, player().x, player().y );
-	var end = getEnding( player().room, player().x, player().y );
+    //test sub-tile movements don't use in commits, move two pixels every frame
+    //removed most of subtile test will have to redo for full gridless movement when gravity is in scope, eg after a new version of this
+    //made useable in commits
+    if (direction == curPlayerDirection) {
+        var pMove = (8 / 8);
+        if (curPlayerDirection == Direction.Left && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
+            player().x -= pMove;
+            didPlayerMoveThisFrame = true;
+        }
+        else if (curPlayerDirection == Direction.Right && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
+            player().x += pMove;
+            didPlayerMoveThisFrame = true;
+        }
+        else if (curPlayerDirection == Direction.Up && isWallAtSide(Direction.Down, pMove) && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
+            player().y -= pMove;
+            didPlayerMoveThisFrame = true;
+        }
+        else if (curPlayerDirection == Direction.Down && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
+            player().y += pMove;
+            didPlayerMoveThisFrame = true;
+        }
+    }
+    else {
+        var pMove = (8 / 8);
+        if (direction == Direction.Left && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
+            player().x -= pMove;
+            didPlayerMoveThisFrame = true;
+        }
+        else if (direction == Direction.Right && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
+            player().x += pMove;
+            didPlayerMoveThisFrame = true;
+        }
+        else if (direction == Direction.Up && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
+            player().y -= pMove;
+            didPlayerMoveThisFrame = true;
+        }
+        else if (direction == Direction.Down && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
+            player().y += pMove;
+            didPlayerMoveThisFrame = true;
+        }
+    }
+
+    var xRound = Math.round(player().x);
+    var yRound = Math.round(player().y);
+    //var ext = getExit(player().room, player().x, player().y);
+    //var end = getEnding(player().room, player().x, player().y);
+    var ext = getExit(player().room, xRound, yRound );
+    var end = getEnding(player().room, xRound, yRound );
 	// TODO : vNext
-	// var eff = getEffect( player().room, player().x, player().y );
-	var itmIndex = getItemIndex( player().room, player().x, player().y );
+    // var eff = getEffect( player().room, player().x, player().y );
+    //var itmIndex = getItemIndex(player().room, player().x, player().y);
+    var itmIndex = getItemIndex(player().room, xRound, yRound );
 
 	// do items first, because you can pick up an item AND go through a door
 	if (itmIndex > -1) {
@@ -1109,12 +1183,51 @@ function getSpriteDown() {
 	return getSpriteAt( player().x, player().y + 1 );
 }
 
+//don't commit this either
+function getSpriteAtSide(direction, dist) {
+    var xPos = player().x;
+    var yPos = player().y;
+
+
+    if (direction == Direction.Left) {
+        return getSpriteAt(Math.round(xPos - dist), Math.round(yPos));
+    }
+    else if (direction == Direction.Right) {
+        return getSpriteAt(Math.round(xPos + dist), Math.round(yPos));
+    }
+    else if (direction == Direction.Up) {
+        return getSpriteAt(Math.round(xPos), Math.round(yPos - dist));
+    }
+    else if (direction == Direction.Down) {
+        return getSpriteAt(Math.round(xPos), Math.round(yPos + dist));
+    }
+}
+
+//or this
+function isWallAtSide(direction, dist) {
+    var xPos = player().x;
+    var yPos = player().y;
+
+    if (direction == Direction.Left) {
+        return (xPos - dist < 0) || isWall(Math.round(xPos - dist), Math.round(yPos));
+    }
+    else if (direction == Direction.Right) {
+        return (xPos - dist < 0) || isWall(Math.round(xPos + dist), Math.round(yPos));
+    }
+    else if (direction == Direction.Up) {
+        return (yPos - dist < 0) || isWall(Math.round(xPos), Math.round(yPos - dist));
+    }
+    else if (direction == Direction.Down) {
+        return (yPos + dist >= 16) || isWall(Math.round(xPos), Math.round(yPos + dist));
+    }
+}
+
 function isWallLeft() {
 	return (player().x - 1 < 0) || isWall( player().x - 1, player().y );
 }
 
 function isWallRight() {
-	return (player().x + 1 >= 16) || isWall( player().x + 1, player().y );
+	return (player().x - 1 < 0) || isWall( player().x + 1, player().y );
 }
 
 function isWallUp() {
