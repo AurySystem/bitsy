@@ -574,10 +574,11 @@ function update() {
                 curPlayerDirection = Direction.None;
                 movePlayer(Direction.Up);
                 jumpTimer = -1;
+                gravTimer = 210;
             }
         }
         else {
-            if (isWallAtSide(gravDirection, 1)) {
+            if (isWallAtSide(gravDirection, 1) || physTypeAt(Direction.None) != 0 || physTypeAt(gravDirection, 1) != 0 || getSpriteAtSide(gravDirection,1)) {
                 gravTimer = -1;
             }
             else if (gravTimer == -1) {
@@ -674,8 +675,8 @@ function updateInput() {
 		}
 
         if (curPlayerDirection != Direction.None && curPlayerDirection != prevPlayerDirection) {
-            if (curPlayerDirection == Direction.Up && isWallAtSide(Direction.Down, 1)) {
-                jumpTimer = 80;
+            if (curPlayerDirection == Direction.Up && (isWallAtSide(Direction.Down, 1) || (physTypeAt(Direction.None) == 0 && physTypeAt(gravDirection, 1) != 0))) {
+                jumpTimer = 90;
             }
             movePlayer(curPlayerDirection);
             playerHoldToMoveTimer = 500;
@@ -1040,19 +1041,24 @@ function movePlayer(direction) {
     //made useable in commits
     if (direction == curPlayerDirection) {
         var pMove = (8 / 8);
-        if (curPlayerDirection == Direction.Left && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
+        if (curPlayerDirection == Direction.Left && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
             player().x -= pMove;
             didPlayerMoveThisFrame = true;
         }
-        else if (curPlayerDirection == Direction.Right && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
+        else if (curPlayerDirection == Direction.Right && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
             player().x += pMove;
             didPlayerMoveThisFrame = true;
         }
-        else if (curPlayerDirection == Direction.Up && isWallAtSide(Direction.Down, pMove) && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
-            player().y -= pMove;
+        else if (curPlayerDirection == Direction.Up && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
+            if (physTypeAt(Direction.None) == 1) {
+                player().y -= pMove;
+            }
+            else if (isWallAtSide(Direction.Down, pMove)) {
+                player().y -= pMove;
+            }
             didPlayerMoveThisFrame = true;
         }
-        else if (curPlayerDirection == Direction.Down && !isWallAtSide(curPlayerDirection, pMove) && !(spr = getSpriteAtSide(curPlayerDirection, pMove))) {
+        else if (curPlayerDirection == Direction.Down && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
             player().y += pMove;
             didPlayerMoveThisFrame = true;
         }
@@ -1203,7 +1209,7 @@ function getSpriteAtSide(direction, dist) {
     }
 }
 
-//or this
+//or this 
 function isWallAtSide(direction, dist) {
     var xPos = player().x;
     var yPos = player().y;
@@ -1212,7 +1218,7 @@ function isWallAtSide(direction, dist) {
         return (xPos - dist < 0) || isWall(Math.round(xPos - dist), Math.round(yPos));
     }
     else if (direction == Direction.Right) {
-        return (xPos - dist < 0) || isWall(Math.round(xPos + dist), Math.round(yPos));
+        return (xPos + dist >= 16) || isWall(Math.round(xPos + dist), Math.round(yPos));
     }
     else if (direction == Direction.Up) {
         return (yPos - dist < 0) || isWall(Math.round(xPos), Math.round(yPos - dist));
@@ -1222,12 +1228,37 @@ function isWallAtSide(direction, dist) {
     }
 }
 
+function physTypeAt(direction, dist) {
+    if (dist == undefined || dist == null) {
+        dist = 0;
+    }
+    var xPos = player().x;
+    var yPos = player().y;
+
+    if (direction == Direction.Left) {
+        return physType(Math.round(xPos - dist), Math.round(yPos));
+    }
+    else if (direction == Direction.Right) {
+        return physType(Math.round(xPos + dist), Math.round(yPos));
+    }
+    else if (direction == Direction.Up) {
+        return physType(Math.round(xPos), Math.round(yPos - dist));
+    }
+    else if (direction == Direction.Down) {
+        return physType(Math.round(xPos), Math.round(yPos + dist));
+    }
+        //ignores distance for checking current tile
+    else if (direction == Direction.None) {
+        return physType(Math.round(xPos), Math.round(yPos));
+    }
+}
+
 function isWallLeft() {
 	return (player().x - 1 < 0) || isWall( player().x - 1, player().y );
 }
 
 function isWallRight() {
-	return (player().x - 1 < 0) || isWall( player().x + 1, player().y );
+    return (player().x + 1 >= 16) || isWall( player().x + 1, player().y );
 }
 
 function isWallUp() {
@@ -1255,6 +1286,24 @@ function isWall(x,y,roomId) {
 
 	// Otherwise, use the tile's own wall-state
 	return tile[tileId].isWall;
+}
+
+function physType(x, y, roomId) {
+    if (roomId == undefined || roomId == null)
+        roomId = curRoom;
+
+    var tileId = getTile(x, y);
+
+    if (tileId === '0')
+        return 0; // Blank spaces have gravity
+
+    if (tile[tileId].physics === undefined || tile[tileId].physics === null) {
+        // No physics defined defualt to gravitty
+        return 0;
+    }
+
+    // Otherwise, use the tile's own wall-state
+    return tile[tileId].physics;
 }
 
 function getItem(roomId,x,y) {
@@ -1566,7 +1615,11 @@ function serializeWorld(skipFonts) {
 		if (tile[id].name != null && tile[id].name != undefined) {
 			/* NAME */
 			worldStr += "NAME " + tile[id].name + "\n";
-		}
+        }
+        if (tile[id].physics != null && tile[id].physics != undefined) {
+            /* NAME */
+            worldStr += "PHYS " + tile[id].physics + "\n";
+        }
 		if (tile[id].isWall != null && tile[id].isWall != undefined) {
 			/* WALL */
 			worldStr += "WAL " + tile[id].isWall + "\n";
@@ -1933,7 +1986,8 @@ function parseTile(lines, i) {
 
 	//other properties
 	var colorIndex = 1; // default palette color index is 1
-	var isWall = null; // null indicates it can vary from room to room (original version)
+    var isWall = null; // null indicates it can vary from room to room (original version)
+    var physics = null;
 	while (i < lines.length && lines[i].length > 0) { //look for empty line
 		if (getType(lines[i]) === "COL") {
 			colorIndex = parseInt( getId(lines[i]) );
@@ -1951,7 +2005,10 @@ function parseTile(lines, i) {
 			else if( wallArg === "false" ) {
 				isWall = false;
 			}
-		}
+        }
+        else if (getType(lines[i]) === "PHYS") {
+            physics = parseInt(getId(lines[i]));
+        }
 		i++;
 	}
 
@@ -1966,7 +2023,8 @@ function parseTile(lines, i) {
 			frameCount : renderer.GetFrameCount(drwId)
 		},
 		name : name,
-		isWall : isWall
+        isWall: isWall,
+		physics: physics
 	};
 
 	return i;
@@ -2133,7 +2191,6 @@ function parseDrawingCore(lines, i, drwId) {
             var l = lines[i + y];
             var row = [];
             var lineSep = l.split(",");
-            console.log(lineSep);
             for (x = 0; x < tilesize; x++) {
                 row.push(parseInt(lineSep[x]));
             }
@@ -2272,6 +2329,16 @@ function parseFlag(lines, i) {
 	flags[id] = parseInt( valStr );
 	i++;
 	return i;
+}
+
+function drawTileFlat(img, x, y, context) {
+    if (!context) { //optional pass in context; otherwise, use default
+        context = ctx;
+    }
+    // NOTE: images are now canvases, instead of raw image data (for chrome performance reasons)
+    ctx.fillStyle = "rgba(" + 0 + "," + 0 + "," + 0 + "," + 255 + ")";
+    ctx.fillRect(x * tilesize * scale, y * tilesize * scale, tilesize * scale, tilesize * scale);
+    context.drawImage(img, x * tilesize * scale, y * tilesize * scale, tilesize * scale, tilesize * scale);
 }
 
 function drawTile(img,x,y,context) {

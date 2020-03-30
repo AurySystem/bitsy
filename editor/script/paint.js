@@ -94,6 +94,22 @@ function DrawingId(type,id) { // TODO: is this the right name?
 		}
 	}
 
+    this.getThumbImage = function (palId, frameIndex) {
+        if (self.type == TileType.Sprite || self.type == TileType.Avatar) {
+            return renderer.GetImageThumb(sprite[self.id], palId, frameIndex);
+        }
+        else if (self.type == TileType.Item) {
+            return renderer.GetImageThumb(item[self.id], palId, frameIndex);
+        }
+        else if (self.type == TileType.Tile) {
+            return renderer.GetImageThumb(tile[self.id], palId, frameIndex);
+        }
+        return null;
+    }
+    this.drawThumb = function (context, x, y, palId, frameIndex) {
+        return drawTileFlat(self.getThumbImage(palId, frameIndex), x, y, context);
+    }
+
 	this.isWallTile = function() {
 		if(self.type != TileType.Tile)
 			return false;
@@ -416,8 +432,10 @@ function PaintTool(canvas, roomTool) {
 
         // tiles have extra data to copy
         var tileIsWall = false;
+        var tilePhysics = 0;
         if (self.drawing.type === TileType.Tile) {
             tileIsWall = tile[self.drawing.id].isWall;
+            tilePhysics = tile[self.drawing.id].physics;
         }
 
         this.newDrawing(copiedImageData);
@@ -425,6 +443,7 @@ function PaintTool(canvas, roomTool) {
         // tiles have extra data to copy
         if (self.drawing.type === TileType.Tile) {
             tile[self.drawing.id].isWall = tileIsWall;
+            tile[self.drawing.id].physics = tilePhysics;
             // make sure the wall toggle gets updated
             self.reloadDrawing();
         }

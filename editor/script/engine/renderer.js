@@ -15,7 +15,7 @@ console.log("!!!!! NEW RENDERER");
 
 var imageStore = { // TODO : rename to imageCache
 	source: {},
-	render: {}
+    render: {}
 };
 
 var palettes = null; // TODO : need null checks?
@@ -51,9 +51,12 @@ function getPaletteColor(paletteId, colorIndex) {
 var debugRenderCount = 0;
 
 // TODO : change image store path from (pal > col > draw) to (draw > pal > col)
-function renderImage(drawing, paletteId) {
+function renderImage(drawing, paletteId, flat) {
 	// debugRenderCount++;
-	// console.log("RENDER COUNT " + debugRenderCount);
+    // console.log("RENDER COUNT " + debugRenderCount);
+    if (flat == null || flat == undefined) {
+        flat = 0;
+    }
 
 	var col = drawing.col;
 	var colStr = "" + col;
@@ -75,13 +78,17 @@ function renderImage(drawing, paletteId) {
 
 	for (var i = 0; i < imgSrc.length; i++) {
 		var frameSrc = imgSrc[i];
-		var frameData = imageDataFromImageSource( frameSrc, pal, col );
+        var frameData = imageDataFromImageSource(frameSrc, pal, col, (flat == 1)? 0:1);
 		imageStore.render[drwId][pal][colStr].push(frameData);
 	}
 }
 
-function imageDataFromImageSource(imageSource, pal, col) {
+function imageDataFromImageSource(imageSource, pal, col, transparent) {
 	//console.log(imageSource);
+    //defualt to transparent
+    if (transparent == null || transparent == undefined) {
+        transparent = 1; 
+    }
 
 	var img = context.createImageData(tilesize*scale,tilesize*scale);
 
@@ -94,17 +101,23 @@ function imageDataFromImageSource(imageSource, pal, col) {
 			for (var sy = 0; sy < scale; sy++) {
 				for (var sx = 0; sx < scale; sx++) {
 					var pxl = (((y * scale) + sy) * tilesize * scale * 4) + (((x*scale) + sx) * 4);
-					if ( px === 1 ) {
-						img.data[pxl + 0] = foregroundColor.r;
-						img.data[pxl + 1] = foregroundColor.g;
-						img.data[pxl + 2] = foregroundColor.b;
-						img.data[pxl + 3] = 255;
-					}
-					else { //ch === 0
-						img.data[pxl + 0] = backgroundColor.r;
-						img.data[pxl + 1] = backgroundColor.g;
-						img.data[pxl + 2] = backgroundColor.b;
-						img.data[pxl + 3] = 0;
+                    if (px === 1) {
+                        img.data[pxl + 0] = foregroundColor.r;
+                        img.data[pxl + 1] = foregroundColor.g;
+                        img.data[pxl + 2] = foregroundColor.b;
+                        img.data[pxl + 3] = 255;
+                    }
+                    else { //ch === 0
+                        img.data[pxl + 0] = backgroundColor.r;
+                        img.data[pxl + 1] = backgroundColor.g;
+                        img.data[pxl + 2] = backgroundColor.b;
+                        if (transparent == 0) {
+                            img.data[pxl + 3] = 255;
+                        }
+                        else {
+                            img.data[pxl + 3] = 0;
+                        }
+                    
 						if (px != 0) {
 							var testColor = getPaletteColor(pal, px); //feels kinda hacky we'd much prefer to get it pull it's color from an array with the pallete's colors popped in... but we can't get that to work
 							img.data[pxl + 0] = testColor.r;
@@ -174,9 +187,16 @@ function getOrRenderImage(drawing, paletteId, frameOverride) {
 
 	return getImageFrame(drawing, paletteId, frameOverride);
 }
+    
+function getAndRenderImageThumb(drawing, paletteId, frameOverride) {
+	renderImage(drawing, paletteId, 1);
+
+	return getImageFrame(drawing, paletteId, frameOverride);
+    }
 
 /* PUBLIC INTERFACE */
 this.GetImage = getOrRenderImage;
+this.GetImageThumb = getAndRenderImageThumb;
 
 this.SetPalettes = setPalettes;
 

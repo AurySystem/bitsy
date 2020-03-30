@@ -389,16 +389,19 @@ function ThumbnailRenderer() {
 
 		// console.log(id);
 
-		var drawingFrameData = [];
+        var drawingFrameData = [];
 
 		if( isAnimated || frameIndex == 0 ) {
-			drawingId.draw( drawingThumbnailCtx, 0, 0, palId, 0 /*frameIndex*/ );
+            drawingId.drawThumb( drawingThumbnailCtx, 0, 0, palId, 0 /*frameIndex*/ );
 			drawingFrameData.push( drawingThumbnailCtx.getImageData(0,0,8*scale,8*scale).data );
 		}
 		if( isAnimated || frameIndex == 1 ) {
-			drawingId.draw( drawingThumbnailCtx, 0, 0, palId, 1 /*frameIndex*/ );
+            drawingId.drawThumb( drawingThumbnailCtx, 0, 0, palId, 1 /*frameIndex*/ );
 			drawingFrameData.push( drawingThumbnailCtx.getImageData(0,0,8*scale,8*scale).data );
-		}
+        }
+        console.log(drawingId.toString());
+        console.log(isAnimated);
+        console.log(drawingId.getImage(palId,0));
 
 		// create encoder
 		var gifData = {

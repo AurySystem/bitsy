@@ -101,7 +101,7 @@ var DialogRenderer = function() {
 		for (var y = 0; y < 3; y++) {
 			for (var x = 0; x < 5; x++) {
 				var i = (y * 5) + x;
-				if (arrowdata[i] == 1) {
+				if (arrowdata[i] != 0) {
 					//scaling nonsense
 					for (var sy = 0; sy < scale; sy++) {
 						for (var sx = 0; sx < scale; sx++) {
@@ -138,7 +138,7 @@ var DialogRenderer = function() {
 			for (var x = 0; x < char.width; x++) {
 
 				var i = (y * char.width) + x;
-				if ( charData[i] == 1 ) {
+				if ( charData[i] != 0 ) {
 
 					//scaling nonsense
 					for (var sy = 0; sy < text_scale; sy++) {
