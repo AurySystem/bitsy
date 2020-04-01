@@ -59,7 +59,7 @@ function updateNamesFromCurData() {
 		if(item[id].name != undefined && item[id].name != null) {
 			names.item.set( item[id].name, id );
 		}
-	}
+    }
 }
 
 var spriteStartLocations = {};
@@ -139,6 +139,9 @@ var key = {
 	a : 65,
 	s : 83,
 	d : 68,
+	q : 81,
+	e : 69,
+	z : 90,
 	r : 82,
 	shift : 16,
 	ctrl : 17,
@@ -537,7 +540,6 @@ function update() {
 	if (!transition.IsTransitionActive()) {
 		updateInput();
 	}
-
 	if (transition.IsTransitionActive()) {
 		// transition animation takes over everything!
 		transition.UpdateTransition(deltaTime);
@@ -560,7 +562,23 @@ function update() {
 		}
 		else if (!isEnding) {
 			moveSprites(); // TODO : I probably need to remove this..
-		}
+        }
+
+        if (extraMoveReset != true && !isNarrating && !isEnding) {
+            if (physTypeAt(gravDirection, 1) != 0 || isWallAtSide(gravDirection, 1)) {
+                extraMoveReset = true;
+            }
+        }
+        // clear input chain after a timer
+        if (!dialogBuffer.IsActive() && !isEnding) {
+            if (clearTimer > 0) {
+                clearTimer -= deltaTime;
+            }
+            else {
+                inputChain.length = 0;
+                clearTimer = 0;
+            }
+        }
         //do not move to master branch, gravity stuff and jump height stuff
         if (jumpTimer != -1) {
             var temp = jumpTimer - deltaTime;
@@ -574,7 +592,27 @@ function update() {
                 curPlayerDirection = Direction.None;
                 movePlayer(Direction.Up);
                 jumpTimer = -1;
-                gravTimer = 210;
+                gravTimer = 240;
+            }
+        }
+        else if (extraMoveTimer != -1) {
+            var temp = extraMoveTimer - deltaTime;
+            if (temp >= 0) {
+                extraMoveTimer -= deltaTime;
+            }
+            else if (temp < 0 && extraMoveTimer > 0) {
+                extraMoveTimer = 0;
+            }
+            if (extraMoveTimer == 0 && extraMoveAmount != 0) {
+                curPlayerDirection = Direction.None;
+                movePlayer(extraMoveDirection);
+                extraMoveTimer = 30;
+                extraMoveAmount -= 1;
+            }
+            if (extraMoveTimer == 0 && extraMoveAmount == 0) {
+                curPlayerDirection = Direction.None;
+                movePlayer(extraMoveDirection);
+                extraMoveTimer = -1;
             }
         }
         else {
@@ -607,9 +645,9 @@ function update() {
 				playerHoldToMoveTimer -= deltaTime;
 
 				if( playerHoldToMoveTimer <= 0 )
-				{
-					movePlayer( curPlayerDirection );
-					playerHoldToMoveTimer = 150;
+                {
+                    movePlayer(curPlayerDirection);
+                    playerHoldToMoveTimer = 150;
 				}
 			}
 		}
@@ -633,56 +671,136 @@ function update() {
 }
 
 function updateInput() {
-	if( dialogBuffer.IsActive() ) {
-		if (input.anyKeyPressed() || input.isTapReleased()) {
-			/* CONTINUE DIALOG */
-			if (dialogBuffer.CanContinue()) {
-				var hasMoreDialog = dialogBuffer.Continue();
-				if(!hasMoreDialog) {
-					// ignore currently held keys UNTIL they are released (stops player from insta-moving)
-					input.ignoreHeldKeys();
-				}
-			}
-			else {
-				dialogBuffer.Skip();
-			}
-		}
-	}
-	else if ( isEnding ) {
-		if (input.anyKeyPressed() || input.isTapReleased()) {
-			/* RESTART GAME */
-			reset_cur_game();
-		}
-	}
-	else {
-		/* WALK */
-		var prevPlayerDirection = curPlayerDirection;
+    if (dialogBuffer.IsActive()) {
+        if (input.anyKeyPressed() || input.isTapReleased()) {
+            /* CONTINUE DIALOG */
+            if (dialogBuffer.CanContinue()) {
+                var hasMoreDialog = dialogBuffer.Continue();
+                if (!hasMoreDialog) {
+                    // ignore currently held keys UNTIL they are released (stops player from insta-moving)
+                    input.ignoreHeldKeys();
+                }
+            }
+            else {
+                dialogBuffer.Skip();
+            }
+        }
+    }
+    else if (isEnding) {
+        if (input.anyKeyPressed() || input.isTapReleased()) {
+            /* RESTART GAME */
+            reset_cur_game();
+        }
+    }
 
+    else {
+
+        /* WALK */
+        var prevPlayerDirection = curPlayerDirection;
+        var horizontal = false;
+        var vertical = false;
+        var temp = false;
         if (input.isKeyDown(key.left) || input.isKeyDown(key.a) || input.swipeLeft()) {
             curPlayerDirection = Direction.Left;
+            horizontal = true;
+            inputChainHelper();
         }
         else if (input.isKeyDown(key.right) || input.isKeyDown(key.d) || input.swipeRight()) {
             curPlayerDirection = Direction.Right;
+            horizontal = true;
+            inputChainHelper();
         }
         else if (input.isKeyDown(key.up) || input.isKeyDown(key.w) || input.swipeUp()) {
             curPlayerDirection = Direction.Up;
+            vertical = false;
+            inputChainHelper();
 		}
 		else if ( input.isKeyDown( key.down ) || input.isKeyDown( key.s ) || input.swipeDown() ) {
-			curPlayerDirection = Direction.Down;
+            curPlayerDirection = Direction.Down;
+            vertical = false;
+            inputChainHelper();
 		}
 		else {
-			curPlayerDirection = Direction.None;
-		}
-
+            curPlayerDirection = Direction.None;
+            if (inputChain[0] != -1) {
+                inputChainHelper();
+            }
+        }
+        
         if (curPlayerDirection != Direction.None && curPlayerDirection != prevPlayerDirection) {
             if (curPlayerDirection == Direction.Up && (isWallAtSide(Direction.Down, 1) || (physTypeAt(Direction.None) == 0 && physTypeAt(gravDirection, 1) != 0))) {
                 jumpTimer = 90;
             }
             movePlayer(curPlayerDirection);
             playerHoldToMoveTimer = 500;
-            console.log(jumpTimer);
-		}
+        }
+
+        if ((input.isKeyDown(key.left) || input.isKeyDown(key.a) || input.swipeLeft()) && curPlayerDirection != Direction.Left && horizontal == false) {
+            secPlayerDirection = Direction.Left;
+        }
+        else if ((input.isKeyDown(key.right) || input.isKeyDown(key.d) || input.swipeRight()) && curPlayerDirection != Direction.Right && horizontal == false) {
+            secPlayerDirection = Direction.Right;
+        }
+        else if ((input.isKeyDown(key.up) || input.isKeyDown(key.w) || input.swipeUp()) && curPlayerDirection != Direction.Up && vertical == false) {
+            secPlayerDirection = Direction.Up;
+        }
+        else if ((input.isKeyDown(key.down) || input.isKeyDown(key.s) || input.swipeDown()) && curPlayerDirection != Direction.Down && vertical == false) {
+            secPlayerDirection = Direction.Down;
+        }
+        else {
+            secPlayerDirection = Direction.None;
+        }
+
+        if (secPlayerDirection != Direction.None && secPlayerDirection != prevPlayerDirection && secPlayerDirection != curPlayerDirection) {
+            if (secPlayerDirection == Direction.Up && (isWallAtSide(Direction.Down, 1) || (physTypeAt(Direction.None) == 0 && physTypeAt(gravDirection, 1) != 0))) {
+                jumpTimer = 90;
+            }
+            movePlayer(secPlayerDirection);
+            playerHoldToMoveTimer = 500;
+        }
+
+        //check the input chain for current direction, no direction, current direction
+        if (inputChain.toString() == (curPlayerDirection + "," + Direction.None + "," + curPlayerDirection) && curPlayerDirection != Direction.None) {
+            temp = true;
+        }
+
+        if (input.isKeyDown(key.e) || input.isKeyDown(key.q) || input.isKeyDown(key.z) || temp) {
+            if (findItemByName('dash') != null && player().inventory[findItemByName('dash')] != null && player().inventory[findItemByName('dash')] != undefined) {
+                canDash = player().inventory[findItemByName('dash')];
+            }
+            if (canDash >= 1 && extraMoveReset && curPlayerDirection != Direction.None) {
+                extraMoveDirection = curPlayerDirection;
+                extraMoveAmount = 1;
+                extraMoveTimer = 30;
+                extraMoveReset = false;
+            }
+        }
+        temp = null;
 	}
+}
+function inputChainHelper() {
+    var temp = inputChain[inputChain.length -1];
+    if (temp != curPlayerDirection || temp == null || temp == undefined) {
+        if ((inputChain[0] == Direction.None) && curPlayerDirection == Direction.None) {
+            return;
+        }
+        else if (inputChain[0] == Direction.None) {
+            inputChain[0] == curPlayerDirection;
+        }
+        else if ((curPlayerDirection != Direction.None && inputChain.length == 0) || inputChain.length >= 1) {
+            if (inputChain.length >= 1 && curPlayerDirection != Direction.None && inputChain[0] != curPlayerDirection) {
+                inputChain.length = 0;
+            }
+            inputChain.push(curPlayerDirection);
+            console.log(inputChain.toString());
+        }
+        if (inputChain.length >= 3) {
+            clearTimer = 0;
+        }
+        else {
+            clearTimer = 200;
+        }
+    }
 }
 
 var animationCounter = 0;
@@ -831,7 +949,15 @@ var Direction = {
 };
 
 var curPlayerDirection = Direction.None;
+var secPlayerDirection = Direction.None;
 var jumpTimer = -1;
+var extraMoveTimer = -1;
+var extraMoveAmount = 1;
+var extraMoveDirection = Direction.None;
+var inputChain = [];
+var clearTimer = 0;
+var canDash = 0;
+var extraMoveReset = false;
 var gravTimer = -1;
 var gravDirection = Direction.Down;
 var playerHoldToMoveTimer = 0;
@@ -1014,6 +1140,10 @@ var InputManager = function() {
 		return touchState.swipeDirection == Direction.Down;
 	}
 
+    this.swipeDirection = function () {
+        return touchState.swipeDirection;
+    }
+
 	this.isTapReleased = function() {
 		return touchState.tapReleased;
 	}
@@ -1029,6 +1159,13 @@ var InputManager = function() {
 }
 var input = null;
 
+function pMoveDirection(direction, move) {
+    if (direction == Direction.Left) { player().x -= move; }
+    if (direction == Direction.Right) { player().x += move; }
+    if (direction == Direction.Up) { player().y -= move; }
+    if (direction == Direction.Down) { player().y += move; }
+}
+
 function movePlayer(direction) {
 	if (player().room == null || !Object.keys(room).includes(player().room)) {
 		return; // player room is missing or invalid.. can't move them!
@@ -1039,60 +1176,39 @@ function movePlayer(direction) {
     //test sub-tile movements don't use in commits, move two pixels every frame
     //removed most of subtile test will have to redo for full gridless movement when gravity is in scope, eg after a new version of this
     //made useable in commits
-    if (direction == curPlayerDirection) {
+    if (direction == curPlayerDirection || direction == secPlayerDirection) {
         var pMove = (8 / 8);
-        if (curPlayerDirection == Direction.Left && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
-            player().x -= pMove;
-            didPlayerMoveThisFrame = true;
-        }
-        else if (curPlayerDirection == Direction.Right && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
-            player().x += pMove;
-            didPlayerMoveThisFrame = true;
-        }
-        else if (curPlayerDirection == Direction.Up && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
-            if (physTypeAt(Direction.None) == 1) {
-                player().y -= pMove;
+        if (!(spr = getSpriteAtSide(direction, pMove)) && !isWallAtSide(direction, pMove)) {
+            if (direction == Direction.Up) {
+                if (physTypeAt(Direction.None) == 1) {
+                    pMoveDirection(direction, pMove);
+                }
+                else if (isWallAtSide(Direction.Down, pMove) || physTypeAt(Direction.Down,pMove) == 1) {
+                    pMoveDirection(direction, pMove);
+                }
             }
-            else if (isWallAtSide(Direction.Down, pMove)) {
-                player().y -= pMove;
+            else {
+                pMoveDirection(direction, pMove);
             }
-            didPlayerMoveThisFrame = true;
-        }
-        else if (curPlayerDirection == Direction.Down && !(spr = getSpriteAtSide(curPlayerDirection, pMove)) && !isWallAtSide(curPlayerDirection, pMove)) {
-            player().y += pMove;
             didPlayerMoveThisFrame = true;
         }
     }
     else {
         var pMove = (8 / 8);
-        if (direction == Direction.Left && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
-            player().x -= pMove;
-            didPlayerMoveThisFrame = true;
-        }
-        else if (direction == Direction.Right && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
-            player().x += pMove;
-            didPlayerMoveThisFrame = true;
-        }
-        else if (direction == Direction.Up && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
-            player().y -= pMove;
-            didPlayerMoveThisFrame = true;
-        }
-        else if (direction == Direction.Down && !isWallAtSide(direction, pMove) && !(getSpriteAtSide(direction, pMove))) {
-            player().y += pMove;
+        if (!(spr = getSpriteAtSide(direction, pMove)) && !isWallAtSide(direction, pMove)) {
+            pMoveDirection(direction, pMove);
             didPlayerMoveThisFrame = true;
         }
     }
 
-    var xRound = Math.round(player().x);
-    var yRound = Math.round(player().y);
     //var ext = getExit(player().room, player().x, player().y);
     //var end = getEnding(player().room, player().x, player().y);
-    var ext = getExit(player().room, xRound, yRound );
-    var end = getEnding(player().room, xRound, yRound );
+    var ext = getExit(player().room, player().x, player().y );
+    var end = getEnding(player().room, player().x, player().y );
 	// TODO : vNext
     // var eff = getEffect( player().room, player().x, player().y );
     //var itmIndex = getItemIndex(player().room, player().x, player().y);
-    var itmIndex = getItemIndex(player().room, xRound, yRound );
+    var itmIndex = getItemIndex(player().room, player().x, player().y );
 
 	// do items first, because you can pick up an item AND go through a door
 	if (itmIndex > -1) {
@@ -1189,7 +1305,6 @@ function getSpriteDown() {
 	return getSpriteAt( player().x, player().y + 1 );
 }
 
-//don't commit this either
 function getSpriteAtSide(direction, dist) {
     var xPos = player().x;
     var yPos = player().y;
@@ -1209,7 +1324,6 @@ function getSpriteAtSide(direction, dist) {
     }
 }
 
-//or this 
 function isWallAtSide(direction, dist) {
     var xPos = player().x;
     var yPos = player().y;
@@ -1291,19 +1405,32 @@ function isWall(x,y,roomId) {
 function physType(x, y, roomId) {
     if (roomId == undefined || roomId == null)
         roomId = curRoom;
-
-    var tileId = getTile(x, y);
-
-    if (tileId === '0')
-        return 0; // Blank spaces have gravity
-
-    if (tile[tileId].physics === undefined || tile[tileId].physics === null) {
-        // No physics defined defualt to gravitty
-        return 0;
+    if (x < 0 || x > 15 || y < 0 || y > 15) {
+        return 0; //invaild tile return no physics
     }
+    else {
 
+        var tileId = getTile(x, y);
+
+        if (tileId === '0')
+            return 0; // Blank spaces have gravity
+
+        if (tile[tileId].physics === undefined || tile[tileId].physics === null) {
+            // No physics defined defualt to gravitty
+            return 0;
+        }
+    }
     // Otherwise, use the tile's own wall-state
     return tile[tileId].physics;
+}
+
+function findItemByName(name) {
+    if (names.item.has(name)) {
+        return (names.item.get(name));
+    }
+    else {
+        return null;
+    }
 }
 
 function getItem(roomId,x,y) {

@@ -421,7 +421,8 @@ function ThumbnailRenderer() {
 
 		// start encoding new GIF
 		var img = document.getElementById(imgId);
-		encoder.encode( gifData, createThumbnailRenderCallback(img) );
+        encoder.encode(gifData, createThumbnailRenderCallback(img));
+        drawingId.forceRerender(palId, 0);
 	}
 	this.Render = function(imgId,drawingId,frameIndex) {
 		render(imgId,drawingId,frameIndex);

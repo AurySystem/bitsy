@@ -92,7 +92,19 @@ function DrawingId(type,id) { // TODO: is this the right name?
 		else if(self.type == TileType.Tile) {
 			return drawTile(self.getImage(palId,frameIndex),x,y,context);
 		}
-	}
+    }
+
+    this.forceRerender = function (palId, flat) {
+        if (self.type == TileType.Sprite || self.type == TileType.Avatar) {
+            return renderer.RerenderImage(sprite[self.id], palId, flat);
+        }
+        else if (self.type == TileType.Item) {
+            return renderer.RerenderImage(item[self.id], palId, flat);
+        }
+        else if (self.type == TileType.Tile) {
+            return renderer.RerenderImage(tile[self.id], palId, flat);
+        }
+    }
 
     this.getThumbImage = function (palId, frameIndex) {
         if (self.type == TileType.Sprite || self.type == TileType.Avatar) {

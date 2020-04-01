@@ -187,7 +187,7 @@ function getOrRenderImage(drawing, paletteId, frameOverride) {
 
 	return getImageFrame(drawing, paletteId, frameOverride);
 }
-    
+
 function getAndRenderImageThumb(drawing, paletteId, frameOverride) {
 	renderImage(drawing, paletteId, 1);
 
@@ -197,6 +197,7 @@ function getAndRenderImageThumb(drawing, paletteId, frameOverride) {
 /* PUBLIC INTERFACE */
 this.GetImage = getOrRenderImage;
 this.GetImageThumb = getAndRenderImageThumb;
+this.RerenderImage = renderImage;
 
 this.SetPalettes = setPalettes;
 
