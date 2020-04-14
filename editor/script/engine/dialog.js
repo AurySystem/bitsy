@@ -127,7 +127,7 @@ var DialogRenderer = function() {
 		char.SetPosition(row,col);
 		char.ApplyEffects(effectTime);
 
-		var charData = char.bitmap;
+        var charData = char.bitmap;
 
 		var top = (4 * scale) + (row * 2 * scale) + (row * font.getHeight() * text_scale) + Math.floor( char.offset.y );
 		var left = (4 * scale) + (leftPos * text_scale) + Math.floor( char.offset.x );
@@ -143,11 +143,20 @@ var DialogRenderer = function() {
 					//scaling nonsense
 					for (var sy = 0; sy < text_scale; sy++) {
 						for (var sx = 0; sx < text_scale; sx++) {
-							var pxl = 4 * ( ((top+(y*text_scale)+sy) * (textboxInfo.width*scale)) + (left+(x*text_scale)+sx) );
-							textboxInfo.img.data[pxl+0] = char.color.r;
-							textboxInfo.img.data[pxl+1] = char.color.g;
-							textboxInfo.img.data[pxl+2] = char.color.b;
-							textboxInfo.img.data[pxl+3] = char.color.a;
+                            var pxl = 4 * (((top + (y * text_scale) + sy) * (textboxInfo.width * scale)) + (left + (x * text_scale) + sx));
+                            if (charData[i] == 1) {
+                                textboxInfo.img.data[pxl + 0] = char.color.r;
+                                textboxInfo.img.data[pxl + 1] = char.color.g;
+                                textboxInfo.img.data[pxl + 2] = char.color.b;
+                                textboxInfo.img.data[pxl + 3] = char.color.a;
+                            }
+                            else {
+                                var drawCol = getColorAtCurPal(charData[i]);
+                                textboxInfo.img.data[pxl + 0] = drawCol.r;
+                                textboxInfo.img.data[pxl + 1] = drawCol.g;
+                                textboxInfo.img.data[pxl + 2] = drawCol.b;
+                                textboxInfo.img.data[pxl + 3] = char.color.a;
+                            }
 						}
 					}
 				}
@@ -171,23 +180,42 @@ var DialogRenderer = function() {
 		
 		// call printHandler for character
 		char.OnPrint();
-	};
+    };
+
+    function getColorAtCurPal(colorIndex) { //copied from renderer
+        paletteId = "default";
+        
+        var palette = getPal(curPal());
+        if (colorIndex > palette.length) {
+            colorIndex = 0;
+        }
+
+        var color = palette[colorIndex];
+
+        return {
+            r: color[0],
+            g: color[1],
+            b: color[2]
+        };
+    }
 
 	var effectTime = 0; // TODO this variable should live somewhere better
-	this.Draw = function(buffer,dt) {
+	this.Draw = function(buffer, dt) {
 		effectTime += dt;
 
 		this.ClearTextbox();
 
-		buffer.ForEachActiveChar( this.DrawChar );
+		buffer.ForEachActiveChar(this.DrawChar);
 
-		if( buffer.CanContinue() )
+		if (buffer.CanContinue()) {
 			this.DrawNextArrow();
+		}
 
 		this.DrawTextbox();
 
-		if( buffer.DidPageFinishThisFrame() && onPageFinish != null )
+		if (buffer.DidPageFinishThisFrame() && onPageFinish != null) {
 			onPageFinish();
+		}
 	};
 
 	/* this is a hook for GIF rendering */
@@ -215,7 +243,7 @@ var DialogBuffer = function() {
 	var nextCharTimer = 0;
 	var nextCharMaxTime = 50; // in milliseconds
 	var isDialogReadyToContinue = false;
-	var activeTextEffects = [];
+    var activeTextEffects = [];
 	var font = null;
 	var arabicHandler = new ArabicHandler();
 	var onDialogEndCallbacks = [];
@@ -269,6 +297,8 @@ var DialogBuffer = function() {
 		charIndex = 0;
 		isDialogReadyToContinue = false;
 
+		afterManualPagebreak = false;
+
 		activeTextEffects = [];
 
 		onDialogEndCallbacks = [];
@@ -277,8 +307,6 @@ var DialogBuffer = function() {
 	};
 
 	this.DoNextChar = function() {
-		// console.log("DO NEXT CHAR");
-
 		nextCharTimer = 0; //reset timer
 
 		//time to update characters
@@ -295,13 +323,17 @@ var DialogBuffer = function() {
 			//the page is full!
 			isDialogReadyToContinue = true;
 			didPageFinishThisFrame = true;
-
-			// console.log("WAITING FOR INPUT");
 		}
 
-		// console.log(this.CurChar());
-		if(this.CurChar() != null)
+		if (this.CurChar() != null) {
+			if (this.CurChar().isPageBreak) {
+				// special case for page break marker character!
+				isDialogReadyToContinue = true;
+				didPageFinishThisFrame = true;
+			}
+			
 			this.CurChar().OnPrint(); // make sure we hit the callback before we run out of text
+		}
 	};
 
 	this.Update = function(dt) {
@@ -353,14 +385,29 @@ var DialogBuffer = function() {
 		}
 	}
 
+	var afterManualPagebreak = false; // is it bad to track this state like this?
+
 	this.Continue = function() {
 		console.log("CONTINUE");
+
+		// if we used a page break character to continue we need
+		// to run whatever is in the script afterwards! // TODO : make this comment better
+		if (this.CurChar().isPageBreak) {
+			// hacky: always treat a page break as the end of dialog
+			// if there's more dialog later we re-activate the dialog buffer
+			this.EndDialog();
+			afterManualPagebreak = true;
+			this.CurChar().OnContinue();
+			return false;
+		}
 		if (pageIndex + 1 < this.CurPageCount()) {
+			console.log("FLIP PAGE!");
 			//start next page
 			this.FlipPage();
 			return true; /* hasMoreDialog */
 		}
 		else {
+			console.log("END DIALOG!");
 			//end dialog mode
 			this.EndDialog();
 			return false; /* hasMoreDialog */
@@ -400,9 +447,10 @@ var DialogBuffer = function() {
 		this.ApplyEffects = function(time) {
 			// console.log("APPLY EFFECTS! " + time);
 			for(var i = 0; i < this.effectList.length; i++) {
-				var effectName = this.effectList[i];
+                var effectName = this.effectList[i].name;
+                var parameters = this.effectList[i].parameters; //passing undefined or null shouldn't be a problem?
 				// console.log("FX " + effectName);
-				TextEffects[ effectName ].DoEffect( this, time );
+				TextEffects[ effectName ].DoEffect( this, time, parameters );
 			}
 		}
 
@@ -412,7 +460,7 @@ var DialogBuffer = function() {
 		}
 		this.OnPrint = function() {
 			if (printHandler != null) {
-				console.log("PRINT HANDLER ---- DIALOG BUFFER");
+				// console.log("PRINT HANDLER ---- DIALOG BUFFER");
 				printHandler();
 				printHandler = null; // only call handler once (hacky)
 			}
@@ -456,6 +504,37 @@ var DialogBuffer = function() {
 		this.spacing = 8;
 	}
 
+	function DialogScriptControlChar() {
+		Object.assign(this, new DialogChar([]));
+
+		this.width = 0;
+		this.height = 0;
+		this.spacing = 0;
+	}
+
+	// is a control character really the best way to handle page breaks?
+	function DialogPageBreakChar() {
+		Object.assign(this, new DialogChar([]));
+
+		this.width = 0;
+		this.height = 0;
+		this.spacing = 0;
+
+		this.isPageBreak = true;
+
+		var continueHandler = null;
+
+		this.SetContinueHandler = function(handler) {
+			continueHandler = handler;
+		}
+
+		this.OnContinue = function() {
+			if (continueHandler) {
+				continueHandler();
+			}
+		}
+	}
+
 	function AddWordToCharArray(charArray,word,effectList) {
 		for(var i = 0; i < word.length; i++) {
 			charArray.push( new DialogFontChar( font, word[i], effectList ) );
@@ -482,50 +561,73 @@ var DialogBuffer = function() {
 
 	var pixelsPerRow = 192; // hard-coded fun times!!!
 
-	this.AddDrawing = function(drawingId, onFinishHandler) {
+	this.AddScriptReturn = function(onReturnHandler) {
+		var curPageIndex = buffer.length - 1;
+		var curRowIndex = buffer[curPageIndex].length - 1;
+		var curRowArr = buffer[curPageIndex][curRowIndex];
+
+		var controlChar = new DialogScriptControlChar();
+		controlChar.SetPrintHandler(onReturnHandler);
+
+		curRowArr.push(controlChar);
+
+		isActive = true;
+	}
+
+	this.AddDrawing = function(drawingId) {
 		// console.log("DRAWING ID " + drawingId);
 
 		var curPageIndex = buffer.length - 1;
 		var curRowIndex = buffer[curPageIndex].length - 1;
 		var curRowArr = buffer[curPageIndex][curRowIndex];
 
-		var drawingChar = new DialogDrawingChar(drawingId, activeTextEffects)
-		drawingChar.SetPrintHandler( onFinishHandler );
+		var drawingChar = new DialogDrawingChar(drawingId, activeTextEffects);
 
 		var rowLength = GetCharArrayWidth(curRowArr);
 
 		// TODO : clean up copy-pasted code here :/
-		if (rowLength + drawingChar.spacing  <= pixelsPerRow || rowLength <= 0)
-		{
-			//stay on same row
-			curRowArr.push( drawingChar );
+		if (afterManualPagebreak) {
+			this.FlipPage(); // hacky
+
+			buffer[curPageIndex][curRowIndex] = curRowArr;
+			buffer.push([]);
+			curPageIndex++;
+			buffer[curPageIndex].push([]);
+			curRowIndex = 0;
+			curRowArr = buffer[curPageIndex][curRowIndex];
+			curRowArr.push(drawingChar);
+
+			afterManualPagebreak = false;
 		}
-		else if (curRowIndex == 0)
-		{
+		else if (rowLength + drawingChar.spacing  <= pixelsPerRow || rowLength <= 0) {
+			//stay on same row
+			curRowArr.push(drawingChar);
+		}
+		else if (curRowIndex == 0) {
 			//start next row
-			buffer[ curPageIndex ][ curRowIndex ] = curRowArr;
-			buffer[ curPageIndex ].push( [] );
+			buffer[curPageIndex][curRowIndex] = curRowArr;
+			buffer[curPageIndex].push([]);
 			curRowIndex++;
-			curRowArr = buffer[ curPageIndex ][ curRowIndex ];
-			curRowArr.push( drawingChar );
+			curRowArr = buffer[curPageIndex][curRowIndex];
+			curRowArr.push(drawingChar);
 		}
 		else {
 			//start next page
-			buffer[ curPageIndex ][ curRowIndex ] = curRowArr;
-			buffer.push( [] );
+			buffer[curPageIndex][curRowIndex] = curRowArr;
+			buffer.push([]);
 			curPageIndex++;
-			buffer[ curPageIndex ].push( [] );
+			buffer[curPageIndex].push([]);
 			curRowIndex = 0;
-			curRowArr = buffer[ curPageIndex ][ curRowIndex ];
-			curRowArr.push( drawingChar );
+			curRowArr = buffer[curPageIndex][curRowIndex];
+			curRowArr.push(drawingChar);
 		}
 
 		isActive = true; // this feels like a bad way to do this???
 	}
 
 	// TODO : convert this into something that takes DialogChar arrays
-	this.AddText = function(textStr,onFinishHandler) {
-		// console.log("ADD TEXT " + textStr);
+	this.AddText = function(textStr) {
+		console.log("ADD TEXT " + textStr);
 
 		//process dialog so it's easier to display
 		var words = textStr.split(" ");
@@ -545,80 +647,123 @@ var DialogBuffer = function() {
 			}
 
 			var wordWithPrecedingSpace = ((i == 0) ? "" : " ") + word;
-			var wordLength = GetStringWidth( wordWithPrecedingSpace );
+			var wordLength = GetStringWidth(wordWithPrecedingSpace);
 
 			var rowLength = GetCharArrayWidth(curRowArr);
 
-			if (rowLength + wordLength <= pixelsPerRow || rowLength <= 0) {
+			if (afterManualPagebreak) {
+				this.FlipPage();
+
+				// hacky copied bit for page breaks
+				buffer[curPageIndex][curRowIndex] = curRowArr;
+				buffer.push([]);
+				curPageIndex++;
+				buffer[curPageIndex].push([]);
+				curRowIndex = 0;
+				curRowArr = buffer[curPageIndex][curRowIndex];
+				curRowArr = AddWordToCharArray(curRowArr, word, activeTextEffects);
+
+				afterManualPagebreak = false;
+			}
+			else if (rowLength + wordLength <= pixelsPerRow || rowLength <= 0) {
 				//stay on same row
-				curRowArr = AddWordToCharArray( curRowArr, wordWithPrecedingSpace, activeTextEffects );
+				curRowArr = AddWordToCharArray(curRowArr, wordWithPrecedingSpace, activeTextEffects);
 			}
 			else if (curRowIndex == 0) {
 				//start next row
-				buffer[ curPageIndex ][ curRowIndex ] = curRowArr;
-				buffer[ curPageIndex ].push( [] );
+				buffer[curPageIndex][curRowIndex] = curRowArr;
+				buffer[curPageIndex].push([]);
 				curRowIndex++;
-				curRowArr = buffer[ curPageIndex ][ curRowIndex ];
-				curRowArr = AddWordToCharArray( curRowArr, word, activeTextEffects );
+				curRowArr = buffer[curPageIndex][curRowIndex];
+				curRowArr = AddWordToCharArray(curRowArr, word, activeTextEffects);
 			}
 			else {
 				//start next page
-				buffer[ curPageIndex ][ curRowIndex ] = curRowArr;
-				buffer.push( [] );
+				buffer[curPageIndex][curRowIndex] = curRowArr;
+				buffer.push([]);
 				curPageIndex++;
-				buffer[ curPageIndex ].push( [] );
+				buffer[curPageIndex].push([]);
 				curRowIndex = 0;
-				curRowArr = buffer[ curPageIndex ][ curRowIndex ];
-				curRowArr = AddWordToCharArray( curRowArr, word, activeTextEffects );
+				curRowArr = buffer[curPageIndex][curRowIndex];
+				curRowArr = AddWordToCharArray(curRowArr, word, activeTextEffects);
 			}
 		}
 
 		//destroy any empty stuff
-		var lastPage = buffer[ buffer.length-1 ];
-		var lastRow = lastPage[ lastPage.length-1 ];
-		if( lastRow.length == 0 )
-			lastPage.splice( lastPage.length-1, 1 );
-		if( lastPage.length == 0 )
-			buffer.splice( buffer.length-1, 1 );
-
-		//finish up 
-		lastPage = buffer[ buffer.length-1 ];
-		lastRow = lastPage[ lastPage.length-1 ];
-		if( lastRow.length > 0 ) {
-			var lastChar = lastRow[ lastRow.length-1 ];
-			lastChar.SetPrintHandler( onFinishHandler );
+		var lastPage = buffer[buffer.length-1];
+		var lastRow = lastPage[lastPage.length-1];
+		if (lastRow.length == 0) {
+			lastPage.splice(lastPage.length-1, 1);
+		}
+		if (lastPage.length == 0) {
+			buffer.splice(buffer.length-1, 1);
 		}
 
-		console.log(buffer);
+		//finish up 
+		lastPage = buffer[buffer.length-1];
+		lastRow = lastPage[lastPage.length-1];
+		if (lastRow.length > 0) {
+			var lastChar = lastRow[lastRow.length-1];
+		}
+
+		// console.log(buffer);
 
 		isActive = true;
 	};
 
 	this.AddLinebreak = function() {
-		var lastPage = buffer[ buffer.length-1 ];
-		if( lastPage.length <= 1 ) {
-			console.log("LINEBREAK - NEW ROW ");
+		var lastPage = buffer[buffer.length-1];
+		if (lastPage.length <= 1) {
+			// console.log("LINEBREAK - NEW ROW ");
 			// add new row
-			lastPage.push( [] );
+			lastPage.push([]);
 		}
 		else {
 			// add new page
-			buffer.push( [[]] );
+			buffer.push([[]]);
 		}
-		console.log(buffer);
+		// console.log(buffer);
 
 		isActive = true;
 	}
 
+	this.AddPagebreak = function(onReturnHandler) {
+		var curPageIndex = buffer.length - 1;
+		var curRowIndex = buffer[curPageIndex].length - 1;
+		var curRowArr = buffer[curPageIndex][curRowIndex];
+
+		// need to actually create a whole new page if following another pagebreak character
+		if (this.CurChar() && this.CurChar().isPageBreak) {
+			buffer.push([]);
+			curPageIndex++;
+			buffer[curPageIndex].push([]);
+			curRowIndex = 0;
+			curRowArr = buffer[curPageIndex][curRowIndex];
+		}
+
+		var pagebreakChar = new DialogPageBreakChar();
+		pagebreakChar.SetContinueHandler(onReturnHandler);
+
+		curRowArr.push(pagebreakChar);
+
+		isActive = true;		
+	}
+
 	/* new text effects */
-	this.HasTextEffect = function(name) {
-		return activeTextEffects.indexOf( name ) > -1;
+    this.HasTextEffect = function (name) {
+        return activeTextEffects.findIndex(test => test.name === name) > -1;
 	}
-	this.AddTextEffect = function(name) {
-		activeTextEffects.push( name );
-	}
+    this.AddTextEffect = function (name, parameters) {
+        if (parameters == null || parameters == undefined) {
+            activeTextEffects.push({ name: name });
+        }
+        else {
+            activeTextEffects.push({ name: name, parameters: parameters });
+        }
+    }
 	this.RemoveTextEffect = function(name) {
-		activeTextEffects.splice( activeTextEffects.indexOf( name ), 1 );
+        activeTextEffects.splice(activeTextEffects.findIndex(test => test.name === name), 1);
+        console.log("removed effect")
 	}
 
 	/* this is a hook for GIF rendering */
@@ -821,9 +966,21 @@ var ColorEffect = function(index) {
 		char.color.a = 255;
 	}
 };
+var ColorEffectV2 = function() {
+	this.DoEffect = function(char,time,index) {
+		var pal = getPal( curPal() );
+		var color = pal[ parseInt( index ) ];
+		// console.log(color);
+		char.color.r = color[0];
+		char.color.g = color[1];
+		char.color.b = color[2];
+		char.color.a = 255;
+	}
+};
 TextEffects["clr1"] = new ColorEffect(0);
 TextEffects["clr2"] = new ColorEffect(1); // TODO : should I use parameters instead of special names?
 TextEffects["clr3"] = new ColorEffect(2);
+TextEffects["clr"] = new ColorEffectV2();
 
 var WavyEffect = function() {
 	this.DoEffect = function(char,time) {
@@ -849,5 +1006,15 @@ var ShakyEffect = function() {
 	}
 };
 TextEffects["shk"] = new ShakyEffect();
+
+var DebugHighlightEffect = function() {
+	this.DoEffect = function(char) {
+		char.color.r = 255;
+		char.color.g = 255;
+		char.color.b = 0;
+		char.color.a = 255;
+	}
+}
+TextEffects["_debug_highlight"] = new DebugHighlightEffect();
 
 } // Dialog()

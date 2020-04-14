@@ -374,7 +374,7 @@ function ThumbnailRenderer() {
 	var thumbnailRenderEncoders = {};
 	var cache = {};
 
-	function render(imgId,drawingId,frameIndex) {
+	function render(imgId,drawingId,frameIndex,imgElement) {
 		var isAnimated = (frameIndex === undefined || frameIndex === null) ? true : false;
 
 		var hexPalette = []; // TODO this is a bit repetitive to do all the time, huh?
@@ -424,8 +424,8 @@ function ThumbnailRenderer() {
         encoder.encode(gifData, createThumbnailRenderCallback(img));
         drawingId.forceRerender(palId, 0);
 	}
-	this.Render = function(imgId,drawingId,frameIndex) {
-		render(imgId,drawingId,frameIndex);
+	this.Render = function(imgId,drawingId,frameIndex,imgElement) {
+		render(imgId,drawingId,frameIndex,imgElement);
 	};
 
 	function createThumbnailRenderCallback(img) {
