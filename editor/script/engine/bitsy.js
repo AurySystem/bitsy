@@ -1111,7 +1111,6 @@ function initRoom(roomId) {
 	for (var i = 0; i < room[roomId].exits.length; i++) {
 		room[roomId].exits[i].property = { locked:false };
 	}
-
 	// init ending properties
 	for (var i = 0; i < room[roomId].endings.length; i++) {
 		room[roomId].endings[i].property = { locked:false };

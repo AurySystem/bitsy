@@ -748,7 +748,6 @@ var DialogBuffer = function() {
 
 		isActive = true;		
 	}
-
 	/* new text effects */
     this.HasTextEffect = function (name) {
         return activeTextEffects.findIndex(test => test.name === name) > -1;
