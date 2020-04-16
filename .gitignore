@@ -18,3 +18,4 @@ experiments/node_modules/*
 .vs/ProjectSettings.json
 .vs/bitsy/v16/.suo
 .vs/bitsy/v15/.suo
+.vs/config/applicationhost.config

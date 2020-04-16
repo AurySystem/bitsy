@@ -452,9 +452,6 @@ function update() {
 			dialogRenderer.Draw( dialogBuffer, deltaTime );
 			dialogBuffer.Update( deltaTime );
 		}
-		else if (!isEnding) {
-			moveSprites(); // TODO : I probably need to remove this..
-        }
 
         if (extraMoveReset != true && !isNarrating && !isEnding) {
             if (physTypeAt(gravDirection, 1) != 0 || isWallAtSide(gravDirection, 1)) {
