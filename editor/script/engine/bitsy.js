@@ -481,7 +481,7 @@ function update() {
                 curPlayerDirection = Direction.None;
                 movePlayer(Direction.Up);
                 jumpTimer = -1;
-                gravTimer = 240;
+                gravTimer = 320;
             }
         }
         else if (extraMoveTimer != -1) {
@@ -502,6 +502,7 @@ function update() {
                 curPlayerDirection = Direction.None;
                 movePlayer(extraMoveDirection);
                 extraMoveTimer = -1;
+                gravTimer = 320;
             }
         }
         else {
