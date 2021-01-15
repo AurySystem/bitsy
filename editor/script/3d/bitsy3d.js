@@ -1276,10 +1276,14 @@ b3d.getTextureFromCache = b3d.getCache('tex', function(drawing, pal, transparenc
     var frameHeight = imageSource[0].length;
 
     // get the colors
-    var bg = bitsy.palette[pal].colors[0].slice();
-    bg[3] = transparency? 0: Math.round(alpha * 255);
-    var fg = bitsy.palette[pal].colors[drawing.col].slice();
-    fg[3] = Math.round(alpha * 255);
+    var colors = bitsy.palette[pal].colors;
+    var fg = [[255], [255], [255], [255]];
+    if (!isNaN(parseInt(drawing.col))) {
+        fg = bitsy.palette[pal].colors[drawing.col].slice();
+    } else if (typeof drawing.col == 'string' && col != 'NaN') {
+        fg = Object.values(hexToRgb(drawing.col));
+    }
+        
 
     var tex = new BABYLON.DynamicTexture(drawing.drw, {
         width: frameWidth * numFrames,
@@ -1290,6 +1294,7 @@ b3d.getTextureFromCache = b3d.getCache('tex', function(drawing, pal, transparenc
     tex.uScale = 1 / numFrames;
     if (transparency || alpha < 1) tex.hasAlpha = true;
 
+
     var ctx = tex.getContext();
     var imageData = ctx.getImageData(0, 0, frameWidth * numFrames, frameHeight);
     for (var frameIndex = 0; frameIndex < numFrames; frameIndex++) {
@@ -1298,8 +1303,10 @@ b3d.getTextureFromCache = b3d.getCache('tex', function(drawing, pal, transparenc
             for (var x = 0; x < curFrame[y].length; x++) {
                 // position of the red component of the pixel at a given coordinate
                 var i = y * (frameWidth * numFrames * 4) + ((frameWidth * frameIndex) + x) * 4;
-                // choose background or foreground color               
-                var col = curFrame[y][x] === 0? bg: fg;
+                // grabs the current colors and aplies alpha
+                var px = curFrame[y][x];
+                var col = px === 1 ? fg : colors[px].slice();
+                col[3] = px === 0 ? transparency ? 0 : Math.round(alpha * 255):Math.round(alpha * 255);
                 // iterate through red, green, blue and alpha components
                 // and put them into image data
                 for (var c = 0; c < col.length; c++) {

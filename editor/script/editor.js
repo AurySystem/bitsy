@@ -1123,7 +1123,7 @@ function start() {
 	// on_change_color_sprite();
 
 	// save latest version used by editor (for compatibility)
-	localStorage.bitsy_3d_engine_version = JSON.stringify( version );
+	localStorage.bitsy_color_3d_engine_version = JSON.stringify( version );
 
 	// load saved export settings
     if (localStorage.bitsy_color_3d_export_settings ) {

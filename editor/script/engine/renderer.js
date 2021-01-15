@@ -88,7 +88,7 @@ function imageDataFromImageSource(imageSource, pal, col) {
 	var img = context.createImageData(tilesize*scale,tilesize*scale);
 
     var foregroundColor = { r:255, g:255, b:255};
-    if (col <= 255) { // this is just temporary so we don't break anything before we redo all references to this, okay thinking it might be perminant anywas for compatibility
+    if (!isNaN(parseInt(col))) {
         foregroundColor = getPaletteColor(pal, col);
     } else if (typeof col == 'string' && col != 'NaN') {
         foregroundColor = hexToRgb(col);
