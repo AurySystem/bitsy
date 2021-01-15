@@ -51,7 +51,7 @@ for (var t in tile) {
 
 	console.log(name);
 
-	var imageSource = renderer.GetImageSource(drwId);
+    var imageSource = renderer.GetImageSource(drwId);
 
 	var frame0 = imageSource[0];
 

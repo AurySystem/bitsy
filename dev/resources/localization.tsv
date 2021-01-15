@@ -249,3 +249,4 @@ exit_dialog_lock_add	add lock	ajouter un verrou			Aggiungi blocco			Sperre	اض�
 exit_dialog_lock_name	locked exit	sortie verrouillée			Uscita bloccata			Gesperrter Übergang	مخرج مقفل	læst útgönguleið	zárt kijárat				zablokowane przejście			
 exit_dialog_lock_default_text1	The key opens the door!	La clé ouvre la porte!			La chiave apre la porta!			Der Schlüssel öffnet die Tür!	المفتاح يستعمل لفتح الباب!	Lykillinn opnar hurðina!	A kulcs nyitja az ajtót.				Klucz otwiera drzwi!			
 exit_dialog_lock_default_text2	The door is locked...	La porte est verrouillée...			La porta è chiusa a chiave...			Die Tür ist verschlossen...	البال مقفل بإحكام ...	Hurðin er læst...	Az ajtó zárva...				Drzwi są zamknięte na klucz…			
+brush_color	brush color	

@@ -58,6 +58,12 @@ for (var i = 0; i < resourceDirectories.length; i++) {
 
 var resourceJavascriptFile = "var Resources = " + JSON.stringify(resourcePackage, null, 2) + ";";
 
+//we have no idea why this turns out differently on everyone elses machines, but inorder to work on ours we need this
+while (resourceJavascriptFile.indexOf('\\r\\n') != -1 ) {
+    var temp = resourceJavascriptFile.replace(/\\r\\n/g, '\\n');
+    resourceJavascriptFile = temp;
+}
+
 fs.writeFile("../editor/script/generated/resources.js", resourceJavascriptFile, function () {});
 
 // console.log(resourcePackage);

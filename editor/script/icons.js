@@ -6,7 +6,10 @@ function IconUtils() {
 
 	function LoadIcon(element, name, frame) {
 		name = name ? name : element.innerText;
-		element.innerHTML = GetIconSource(name, frame);
+        element.innerHTML = GetIconSource(name, frame);
+        if (element.classList.contains("new_icon")){
+            element.classList.remove("new_icon")
+        }
 	}
 	this.LoadIcon = LoadIcon;
 

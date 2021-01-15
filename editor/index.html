@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+﻿<!DOCTYPE HTML>
 <html>
 	<head>
 		<meta charset="UTF-8">
@@ -907,134 +907,188 @@
 					</div>
 				</div>
 
-				<div id="paintPanel" class="panel color1">
-					<div class="bar color1">
+                <div id="paintPanel" class="panel color1">
+                    <div class="bar color1">
 
-						<button title="minimize paint window" class="light panelBarClose" onclick="hidePanel('paintPanel');" style="line-height: 100%; margin-top: 2px;">
-							<span class="bitsy_icon">close</span>
-						</button>
+                        <button title="minimize paint window" class="light panelBarClose" onclick="hidePanel('paintPanel');" style="line-height: 100%; margin-top: 2px;">
+                            <span class="bitsy_icon">close</span>
+                        </button>
 
-						<div title="paint window" class="panelBarTitle" onmousedown="grabCard(event);">
-							<span class="bitsy_icon icon_large icon_space_right">paint</span>
-							<span class="localize paint_tool_name">paint</span>
-						</div>
-					</div>
-					<form id="paintModeRadio" style="margin-bottom: 5px;">
-						<input type="radio" name="paint mode" value="avatar" onclick="on_paint_avatar();" id="paintOptionAvatar" checked>
-						<label title="edit the avatar: the player's character" for="paintOptionAvatar" class="left">
-							<span class="bitsy_icon icon_space_right">avatar</span>
-							<span class="localize avatar_label">avatar</span>
-						</label>
+                        <div title="paint window" class="panelBarTitle" onmousedown="grabCard(event);">
+                            <span class="bitsy_icon icon_large icon_space_right">paint</span>
+                            <span class="localize paint_tool_name">paint</span>
+                        </div>
+                    </div>
+                    <form id="paintModeRadio" style="margin-bottom: 5px;">
+                        <input type="radio" name="paint mode" value="avatar" onclick="on_paint_avatar();" id="paintOptionAvatar" checked>
+                        <label title="edit the avatar: the player's character" for="paintOptionAvatar" class="left">
+                            <span class="bitsy_icon icon_space_right">avatar</span>
+                            <span class="localize avatar_label">avatar</span>
+                        </label>
 
-						<input type="radio" name="paint mode" value="tile" onclick="on_paint_tile();" id="paintOptionTile">
-						<label title="edit tiles: pieces of scenery" for="paintOptionTile" class="middle">
-							<span class="bitsy_icon icon_space_right">tile</span>
-							<span class="localize tile_label">tile</span>
-						</label>
+                        <input type="radio" name="paint mode" value="tile" onclick="on_paint_tile();" id="paintOptionTile">
+                        <label title="edit tiles: pieces of scenery" for="paintOptionTile" class="middle">
+                            <span class="bitsy_icon icon_space_right">tile</span>
+                            <span class="localize tile_label">tile</span>
+                        </label>
 
-						<input type="radio" name="paint mode" value="sprite" onclick="on_paint_sprite();" id="paintOptionSprite">
-						<label title="edit sprites: non-player characters and interactive objects" for="paintOptionSprite" class="middle">
-							<span class="bitsy_icon icon_space_right">sprite</span>
-							<span class="localize sprite_label">sprite</span>
-						</label>
+                        <input type="radio" name="paint mode" value="sprite" onclick="on_paint_sprite();" id="paintOptionSprite">
+                        <label title="edit sprites: non-player characters and interactive objects" for="paintOptionSprite" class="middle">
+                            <span class="bitsy_icon icon_space_right">sprite</span>
+                            <span class="localize sprite_label">sprite</span>
+                        </label>
 
-						<input type="radio" name="paint mode" value="item" onclick="on_paint_item();" id="paintOptionItem">
-						<label title="edit items: things the player can pick up" for="paintOptionItem" class="right">
-							<span class="bitsy_icon icon_space_right">item</span>
-							<span class="localize item_label">item</span>
-						</label>
-						
-					</form>
-					<div id="paintNavigationControls" class="navControl">
-						<input title="a name to refer to this drawing" type="text" id="drawingName" class="textInputField" onchange="on_drawing_name_change();" size="10"></input>
+                        <input type="radio" name="paint mode" value="item" onclick="on_paint_item();" id="paintOptionItem">
+                        <label title="edit items: things the player can pick up" for="paintOptionItem" class="right">
+                            <span class="bitsy_icon icon_space_right">item</span>
+                            <span class="localize item_label">item</span>
+                        </label>
 
-						<span class="spacer"></span>
+                    </form>
+                    <div id="paintNavigationControls" class="navControl">
+                        <input title="a name to refer to this drawing" type="text" id="drawingName" class="textInputField" onchange="on_drawing_name_change();" size="10"></input>
 
-						<button title="previous drawing" class="color0 disableForAvatar" onclick="prev();">
-							<span class="bitsy_icon">previous</span>
-						</button>
-						<button title="next drawing" class="color0 disableForAvatar" onclick="next();">
-							<span class="bitsy_icon">next</span>
-						</button>
+                        <span class="spacer"></span>
 
-						<span class="spacer"></span>
+                        <button title="previous drawing" class="color0 disableForAvatar" onclick="prev();">
+                            <span class="bitsy_icon">previous</span>
+                        </button>
+                        <button title="next drawing" class="color0 disableForAvatar" onclick="next();">
+                            <span class="bitsy_icon">next</span>
+                        </button>
 
-						<button title="add drawing" class="color0 disableForAvatar" onclick="newDrawing();">
-							<span class="bitsy_icon">add</span>
-						</button>
-						<button title="duplicate drawing" class="color0 disableForAvatar" onclick="duplicateDrawing();">
-							<span class="bitsy_icon">copy</span>
-						</button>
-						<button title="delete drawing" class="color0 disableForAvatar" onclick="deleteDrawing();">
-							<span class="bitsy_icon">delete</span>
-						</button>
+                        <span class="spacer"></span>
 
-						<span class="spacer"></span>
+                        <button title="add drawing" class="color0 disableForAvatar" onclick="newDrawing();">
+                            <span class="bitsy_icon">add</span>
+                        </button>
+                        <button title="duplicate drawing" class="color0 disableForAvatar" onclick="duplicateDrawing();">
+                            <span class="bitsy_icon">copy</span>
+                        </button>
+                        <button title="delete drawing" class="color0 disableForAvatar" onclick="deleteDrawing();">
+                            <span class="bitsy_icon">delete</span>
+                        </button>
 
-						<button title="find drawing: browse list of all drawings" class="color0" onclick="showPanel('paintExplorerPanel', 'paintPanel');">
-							<span class="bitsy_icon">search</span>
-						</button>
-					</div>
-					<div style="margin-bottom: 5px;">
-						<canvas id="paint"></canvas>
-					</div>
-					<div id="paintEditMain">
-						<div class="buttonGroup" style="margin-bottom: 10px;">
-							<input type="checkbox" id="paintGridCheck" onclick="togglePaintGrid(event);" checked/>
-							<label title="show / hide grid" for="paintGridCheck">
-								<span id="paintGridIcon" class="bitsy_icon icon_space_right">visibility</span>
-								<span class="localize grid_toggle_visible">grid</span>
-							</label>
-							<button id="showInventoryButton" title="show inventory" onclick="showPanel('inventoryPanel', 'paintPanel');">
-								<span class="bitsy_icon">item</span>
-								<span class="localize inventory_tool_name">inventory</span>
-							</button>
-						</div>
-					</div>
+                        <span class="spacer"></span>
 
-					<div id="wall" class="controlBox" style="display:none;">
-						<input type="checkbox" id="wallCheckbox" onchange="on_toggle_wall(event);">
-						<label title="make tile an impassible wall" for="wallCheckbox">
-							<span id="wallCheckboxIcon" class="bitsy_icon">wall_off</span>
-							<span class="localize wall_toggle">wall</span>
-						</label>
-					</div>
-					<div id="dialog" style="display:none;">
-					</div>
+                        <button title="find drawing: browse list of all drawings" class="color0" onclick="showPanel('paintExplorerPanel', 'paintPanel');">
+                            <span class="bitsy_icon">search</span>
+                        </button>
+                    </div>
+                    <div style="margin-bottom: 5px;">
+                        <canvas id="paint"></canvas>
+                    </div>
 
-					<div id="animationOuter" class="controlBox">
-						<div id="isAnimated">
-							<input type="checkbox" id="animatedCheckbox" onchange="on_toggle_animated();">
-							<label title="add animation to drawing" for="animatedCheckbox">
-								<span class="localize animation_title">animation</span>
-								<span id="animatedCheckboxIcon" class="bitsy_icon">expand_less</span>
-							</label>
-						</div>
-						<div id="animation" style="display:none;">
-							<div class="buttonGroup">
-								<div class="animationThumbnail preview">
-									<img id="animationThumbnailPreview" />
-									<div>
-										<span class="localize animation_preview">preview</span>
-									</div>
-								</div>
-								<div id="animationKeyframe1" class="animationThumbnail left selected" onclick="on_paint_frame1();">
-									<img id="animationThumbnailFrame1" />
-									<div>
-										<span class="localize animation_frame1">frame 1</span>
-									</div>
-								</div>
-								<div id="animationKeyframe2" class="animationThumbnail right unselected" onclick="on_paint_frame2();">
-									<img id="animationThumbnailFrame2" />
-									<div>
-										<span class="localize animation_frame2">frame 2</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-					
-				</div>
+                    <div id="paintTransform">
+                        <div class="buttonGroup" style="margin-bottom: 5px; margin-right: 3px;">
+                            <button title="nudge left" class="color0" onclick="nudgeDrawing(0);">
+                                <span class="bitsy_icon">previous</span>
+                            </button>
+                            <button title="nudge right" class="color0" onclick="nudgeDrawing(1);">
+                                <span class="bitsy_icon">next</span>
+                            </button>
+                            <button title="nudge up" class="color0" onclick="nudgeDrawing(2);">
+                                <span class="bitsy_icon">arrow_up</span>
+                            </button>
+                            <button title="nudge down" class="color0" onclick="nudgeDrawing(3);">
+                                <span class="bitsy_icon">arrow_down</span>
+                            </button>
+                        </div>
+                        <div class="buttonGroup" style="margin-bottom: 5px; margin-right: 3px;">
+                            <button title="rotate clockwize" class="color0" onclick="rotateDrawing(1);">
+                                <span class="bitsy_icon">rotate_right</span>
+                            </button>
+                            <button title="rotate counter-clockwize" class="color0" onclick="rotateDrawing(0);">
+                                <span class="bitsy_icon">rotate_left</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="paintMirror">
+                        <div class="buttonGroup" style="margin-bottom: 5px; margin-right: 3px;">
+                            <button title="mirror to right" class="color0" onclick="mirrorDrawing(1);">
+                                <span class="bitsy_icon">mirror_right</span>
+                            </button>
+                            <button title="mirror to left" class="color0" onclick="mirrorDrawing(0);">
+                                <span class="bitsy_icon">mirror_left</span>
+                            </button>
+                            <button title="mirror to down" class="color0" onclick="mirrorDrawing(3);">
+                                <span class="bitsy_icon">mirror_down</span>
+                            </button>
+                            <button title="mirror to up" class="color0" onclick="mirrorDrawing(2);">
+                                <span class="bitsy_icon">mirror_up</span>
+                            </button>
+                        </div>
+                        <div class="buttonGroup" style="margin-bottom: 5px; margin-right: 3px;">
+                            <button title="horizontal flip" class="color0" onclick="flipDrawing(1);">
+                                <span class="bitsy_icon">flip_horizontal</span>
+                            </button>
+                            <button title="vertical flip" class="color0" onclick="flipDrawing(0);">
+                                <span class="bitsy_icon">flip_vertical</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="paintEditMain">
+                        <div class="buttonGroup" style="margin-bottom: 10px;">
+                            <input type="checkbox" id="paintGridCheck" onclick="togglePaintGrid(event);" checked />
+                            <label title="show / hide grid" for="paintGridCheck">
+                                <span id="paintGridIcon" class="bitsy_icon icon_space_right">visibility</span>
+                                <span class="localize grid_toggle_visible">grid</span>
+                            </label>
+                            <button id="showInventoryButton" title="show inventory" onclick="showPanel('inventoryPanel', 'paintPanel');">
+                                <span class="bitsy_icon">item</span>
+                                <span class="localize inventory_tool_name">inventory</span>
+                            </button>
+                            <span id="drawingPaintCol" title="paint with this color" class="controlSpan">
+                                <span class="localize brush_color">brush color</span>
+                                <input type="text" id="paintColor" size="3" />
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="wall" class="controlBox" style="display:none;">
+                        <input type="checkbox" id="wallCheckbox" onchange="on_toggle_wall(event);">
+                        <label title="make tile an impassible wall" for="wallCheckbox">
+                            <span id="wallCheckboxIcon" class="bitsy_icon">wall_off</span>
+                            <span class="localize wall_toggle">wall</span>
+                        </label>
+                    </div>
+                    <div id="dialog" style="display:none;">
+                    </div>
+
+                    <div id="animationOuter" class="controlBox">
+                        <div id="isAnimated">
+                            <input type="checkbox" id="animatedCheckbox" onchange="on_toggle_animated();">
+                            <label title="add animation to drawing" for="animatedCheckbox">
+                                <span class="localize animation_title">animation</span>
+                                <span id="animatedCheckboxIcon" class="bitsy_icon">expand_less</span>
+                            </label>
+                        </div>
+                        <div id="animation" style="display:none;">
+                            <div class="buttonGroup">
+                                <div class="animationThumbnail preview">
+                                    <img id="animationThumbnailPreview" />
+                                    <div>
+                                        <span class="localize animation_preview">preview</span>
+                                    </div>
+                                </div>
+                                <div id="animationKeyframe1" class="animationThumbnail left selected" onclick="on_paint_frame1();">
+                                    <img id="animationThumbnailFrame1" />
+                                    <div>
+                                        <span class="localize animation_frame1">frame 1</span>
+                                    </div>
+                                </div>
+                                <div id="animationKeyframe2" class="animationThumbnail right unselected" onclick="on_paint_frame2();">
+                                    <img id="animationThumbnailFrame2" />
+                                    <div>
+                                        <span class="localize animation_frame2">frame 2</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
 
 				<div id="paintExplorerPanel" class="panel color1">
 					<div class="bar color1">
@@ -1136,25 +1190,19 @@
 						</button>
 					</div>
 
-					<form id="colorPaletteForm">
-						<input type="radio" name="colorPalette" value="background" id="colorPaletteOptionBackground" onclick="changeColorPickerIndex(0);" checked>
-						<label id="colorPaletteLabelBackground" for="colorPaletteOptionBackground" title="pick background color">
-							<span class="bitsy_icon icon_space_right">room</span>
-							<span class="localize palette_background">background color</span>
-						</label>
-
-						<input type="radio" name="colorPalette" value="background" id="colorPaletteOptionTile" onclick="changeColorPickerIndex(1);">
-						<label id="colorPaletteLabelTile" for="colorPaletteOptionTile" title="pick tile color">
-							<span class="bitsy_icon icon_space_right">tile</span>
-							<span class="localize palette_tile">tile color</span>
-						</label>
-
-						<input type="radio" name="colorPalette" value="background" id="colorPaletteOptionSprite" onclick="changeColorPickerIndex(2);">
-						<label id="colorPaletteLabelSprite" for="colorPaletteOptionSprite" title="pick sprite / avatar / item color">
-							<span class="bitsy_icon icon_space_right">sprite</span>
-							<span class="localize palette_sprite">sprite color</span>
-						</label>
-					</form>
+                    <div id="colorPaletteViewport">
+                        <div id="colorPaletteContent">
+                            <form id="colorPaletteForm">
+                                <span id="colorPaletteFormInner"></span>
+                                <div id="colorPaletteAdd" style="display:inline-block;">
+                                    <button title="add color" onclick="addColor(); return false;">
+                                        <span class="bitsy_icon">add</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
 
 					<div id="colorPicker" title="color picker">
 						<canvas id="colorPickerWheel"></canvas>
@@ -1164,7 +1212,7 @@
 						</div>
 						<input id="colorPickerHexText" class="textInputField" title="color picker hex code" type="text" />
 					</div>
-				</div>
+                </div>
 
 				<div id="dialogPanel" class="panel color3">
 					<div class="bar color3">

@@ -75,7 +75,8 @@ function getEngineVersion() {
 var flags;
 function resetFlags() {
 	flags = {
-		ROOM_FORMAT : 0 // 0 = non-comma separated, 1 = comma separated
+        ROOM_FORMAT: 0, // 0 = non-comma separated, 1 = comma separated
+		DRAW_FORMAT: 0 // 0 = non-comma separated, 1 = comma separated
 	};
 }
 resetFlags(); //init flags on load script
@@ -893,7 +894,6 @@ function initRoom(roomId) {
 	for (var i = 0; i < room[roomId].exits.length; i++) {
 		room[roomId].exits[i].property = { locked:false };
 	}
-
 	// init ending properties
 	for (var i = 0; i < room[roomId].endings.length; i++) {
 		room[roomId].endings[i].property = { locked:false };
@@ -1058,15 +1058,15 @@ function parseWorld(file) {
 			}
 
 			//skip blank lines & comments
-			i++;
-		}
-		else if (getType(curLine) == "PAL") {
+            i++;
+        }
+        else if (getType(curLine) == "PAL") {
 			i = parsePalette(lines, i);
 		}
-		else if (getType(curLine) === "ROOM" || getType(curLine) === "SET") { //SET for back compat
+       else if (getType(curLine) === "ROOM" || getType(curLine) === "SET") { //SET for back compat
 			i = parseRoom(lines, i, compatibilityFlags);
 		}
-		else if (getType(curLine) === "TIL") {
+       else if (getType(curLine) === "TIL") {
 			i = parseTile(lines, i);
 		}
 		else if (getType(curLine) === "SPR") {
@@ -1076,7 +1076,7 @@ function parseWorld(file) {
 			i = parseItem(lines, i);
 		}
 		else if (getType(curLine) === "DRW") {
-			i = parseDrawing(lines, i);
+            i = parseDrawing(lines, i); 
 		}
 		else if (getType(curLine) === "DLG") {
 			i = parseDialog(lines, i, compatibilityFlags);
@@ -1100,7 +1100,7 @@ function parseWorld(file) {
 		else if (getType(curLine) === "!") {
 			i = parseFlag(lines, i);
 		}
-		else {
+        else {
 			i++;
 		}
 	}
@@ -1118,7 +1118,7 @@ function parseWorld(file) {
 	}
 	else {
 		// uh oh there are no rooms I guess???
-		curRoom = null;
+        curRoom = null;
 	}
 
 	if (curRoom != null) {
@@ -1300,7 +1300,7 @@ function serializeWorld(skipFonts) {
 			/* WALL */
 			worldStr += "WAL " + tile[id].isWall + "\n";
 		}
-		if (tile[id].col != null && tile[id].col != undefined && tile[id].col != 1) {
+		if (tile[id].col != null && tile[id].col != undefined) {
 			/* COLOR OVERRIDE */
 			worldStr += "COL " + tile[id].col + "\n";
 		}
@@ -1326,7 +1326,7 @@ function serializeWorld(skipFonts) {
 				worldStr += "ITM " + itemId + " " + sprite[id].inventory[itemId] + "\n";
 			}
 		}
-		if (sprite[id].col != null && sprite[id].col != undefined && sprite[id].col != 2) {
+		if (sprite[id].col != null && sprite[id].col != undefined) {
 			/* COLOR OVERRIDE */
 			worldStr += "COL " + sprite[id].col + "\n";
 		}
@@ -1343,7 +1343,7 @@ function serializeWorld(skipFonts) {
 		if (item[id].dlg != null) {
 			worldStr += "DLG " + item[id].dlg + "\n";
 		}
-		if (item[id].col != null && item[id].col != undefined && item[id].col != 2) {
+		if (item[id].col != null && item[id].col != undefined) {
 			/* COLOR OVERRIDE */
 			worldStr += "COL " + item[id].col + "\n";
 		}
@@ -1382,7 +1382,8 @@ function serializeDrawing(drwId) {
 		for (y in imageSource[f]) {
 			var rowStr = "";
 			for (x in imageSource[f][y]) {
-				rowStr += imageSource[f][y][x];
+                rowStr += imageSource[f][y][x];
+                if (x < imageSource[f][y].length - 1) rowStr += ","
 			}
 			drwStr += rowStr + "\n";
 		}
@@ -1470,7 +1471,7 @@ function parseRoom(lines, i, compatibilityFlags) {
 		var y = 0;
 		for (; i<end; i++) {
 			room[id].tilemap.push( [] );
-			var lineSep = lines[i].split(",");
+            var lineSep = lines[i].split(",");
 			for (x = 0; x<mapsize; x++) {
 				room[id].tilemap[y].push( lineSep[x] );
 			}
@@ -1638,7 +1639,7 @@ function parseTile(lines, i) {
 	else {
 		// store tile source
 		drwId = "TIL_" + id;
-		i = parseDrawingCore( lines, i, drwId );
+        i = parseDrawingCore(lines, i, drwId);
 	}
 
 	//other properties
@@ -1646,7 +1647,10 @@ function parseTile(lines, i) {
 	var isWall = null; // null indicates it can vary from room to room (original version)
 	while (i < lines.length && lines[i].length > 0) { //look for empty line
 		if (getType(lines[i]) === "COL") {
-			colorIndex = parseInt( getId(lines[i]) );
+            colorIndex = parseInt(getId(lines[i]));
+            if (isNaN(colorIndex)) {
+                colorIndex = getId(lines[i]);
+            }
 		}
 		else if (getType(lines[i]) === "NAME") {
 			/* NAME */
@@ -1700,13 +1704,16 @@ function parseSprite(lines, i) {
 	}
 
 	//other properties
-	var colorIndex = 2; //default palette color index is 2
+	var colorIndex = 1; //default palette color index is 1
 	var dialogId = null;
 	var startingInventory = {};
 	while (i < lines.length && lines[i].length > 0) { //look for empty line
 		if (getType(lines[i]) === "COL") {
 			/* COLOR OFFSET INDEX */
-			colorIndex = parseInt( getId(lines[i]) );
+            colorIndex = parseInt(getId(lines[i]));
+            if (isNaN(colorIndex)) {
+                colorIndex = getId(lines[i]);
+            }
 		}
 		else if (getType(lines[i]) === "POS") {
 			/* STARTING POSITION */
@@ -1774,12 +1781,15 @@ function parseItem(lines, i) {
 	}
 
 	//other properties
-	var colorIndex = 2; //default palette color index is 2
+	var colorIndex = 1; //default palette color index is 1
 	var dialogId = null;
 	while (i < lines.length && lines[i].length > 0) { //look for empty line
 		if (getType(lines[i]) === "COL") {
 			/* COLOR OFFSET INDEX */
-			colorIndex = parseInt( getArg( lines[i], 1 ) );
+            colorIndex = parseInt(getArg(lines[i], 1));
+            if (isNaN(colorIndex)) {
+                colorIndex = getId(lines[i]);
+            }
 		}
 		// else if (getType(lines[i]) === "POS") {
 		// 	/* STARTING POSITION */
@@ -1837,7 +1847,7 @@ function parseDrawingCore(lines, i, drwId) {
     var frameListStrings = [];
     frameListStrings.push([]);
 
-    while (!isNaN(parseInt(lines[i].charAt(0))) || lines[i].charAt(0) === ">") {
+    while (!isNaN(parseInt(lines[i].charAt(0))) || lines[i].charAt(0) === ">" || lines[i].charAt(0) === ",") {
         if ( lines[i].charAt(0) === ">") {
             frameListStrings.push([]);
             frameIndex++;
@@ -1853,18 +1863,36 @@ function parseDrawingCore(lines, i, drwId) {
     var framesParsed = [];
 
     // parse drawing data
-    frameListStrings.forEach(function (frame, frameIndex) {
-        framesParsed[frameIndex] = [];
-        for (y = 0; y < drawingSize; y++) {
-            var line = frame[y] || '';
-            framesParsed[frameIndex][y] = [];
-            for (x = 0; x < drawingSize; x++) {
-                var parsedPixel = parseInt(line.charAt(x));
-                parsedPixel = isNaN(parsedPixel)? 0: parsedPixel;
-                framesParsed[frameIndex][y].push(parsedPixel);
+    if (flags.DRAW_FORMAT == 1) {
+        frameListStrings.forEach(function (frame, frameIndex) {
+            framesParsed[frameIndex] = [];
+            for (y = 0; y < drawingSize; y++) {
+                var line = frame[y] || '';
+                var lineSep = line.split(",");
+                framesParsed[frameIndex][y] = [];
+                for (x = 0; x < drawingSize; x++) {
+                    var parsedPixel = parseInt(lineSep[x]);
+                    parsedPixel = isNaN(parsedPixel) ? 0 : parsedPixel;
+                    framesParsed[frameIndex][y].push(parsedPixel);
+                }
             }
-        }
-    });
+        });
+    } else {
+        frameListStrings.forEach(function (frame, frameIndex) {
+            framesParsed[frameIndex] = [];
+            for (y = 0; y < drawingSize; y++) {
+                var line = frame[y] || '';
+                var lineSep = line.split(",");
+                framesParsed[frameIndex][y] = [];
+                for (x = 0; x < drawingSize; x++) {
+                    var parsedPixel = parseInt(line.charAt(x));
+                    parsedPixel = isNaN(parsedPixel) ? 0 : parsedPixel;
+                    framesParsed[frameIndex][y].push(parsedPixel);
+                }
+            }
+        });
+    }
+
 
     renderer.SetImageSource(drwId, framesParsed);
 

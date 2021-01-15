@@ -86,6 +86,21 @@ function nextObjectId(idList) {
 	return idInt.toString(36);
 }
 
+function prevPaletteId() {
+    return prevObjectId(sortedPaletteIdList());
+}
+
+function prevObjectId(idList) {
+    if (idList.length <= 0) {
+        return "0";
+    }
+
+    var lastId = idList[idList.length - 1];
+    var idInt = parseInt(lastId, 36);
+    idInt--;
+    return idInt.toString(36);
+}
+
 function sortedTileIdList() {
 	return sortedBase36IdList( tile );
 }
@@ -660,7 +675,7 @@ function setDefaultGameState() {
 	var defaultData = Resources["defaultGameData.bitsy"];
 	// console.log("DEFAULT DATA \n" + defaultData);
 	document.getElementById("game_data").value = defaultData;
-	localStorage.bitsy_3d_game_data = document.getElementById("game_data").value; // save game
+	localStorage.bitsy_color_game_3d_data = document.getElementById("game_data").value; // save game
 	clearGameData();
 	parseWorld(document.getElementById("game_data").value); // load game
 
@@ -720,7 +735,8 @@ function refreshGameData() {
 		return; //never store game data while in playmode (TODO: wouldn't be necessary if the game data was decoupled form editor data)
 	}
 
-	flags.ROOM_FORMAT = 1; // always save out comma separated format, even if the old format is read in
+    flags.ROOM_FORMAT = 1; // always save out comma separated format, even if the old format is read in
+    flags.DRAW_FORMAT = 1;
 
 	// var gameData = serializeWorld();
 
@@ -731,7 +747,7 @@ function refreshGameData() {
 
 	// localStorage.setItem("bitsy_3d_game_data", gameData); //auto-save
 
-	localStorage.setItem("bitsy_3d_game_data", gameDataNoFonts);
+    localStorage.setItem("bitsy_color_3d_game_data", gameDataNoFonts);
 }
 
 /* TIMER */
@@ -867,12 +883,12 @@ var defaultPanelPrefs = {
 
 function getPanelPrefs() {
 	// (TODO: weird that engine version and editor version are the same??)
-	var useDefaultPrefs = ( localStorage.bitsy_3d_engine_version == null ) ||
-							( localStorage.bitsy_3d_panel_prefs == null ) ||
-							( JSON.parse(localStorage.bitsy_3d_engine_version).major < 6 ) ||
-							( JSON.parse(localStorage.bitsy_3d_engine_version).minor < 0 );
+	var useDefaultPrefs = ( localStorage.bitsy_color_3d_engine_version == null ) ||
+                            (localStorage.bitsy_color_3d_panel_prefs == null ) ||
+							( JSON.parse(localStorage.bitsy_color_3d_engine_version).major < 6 ) ||
+							( JSON.parse(localStorage.bitsy_color_3d_engine_version).minor < 0 );
 
-	var prefs = useDefaultPrefs ? defaultPanelPrefs : JSON.parse( localStorage.bitsy_3d_panel_prefs );
+    var prefs = useDefaultPrefs ? defaultPanelPrefs : JSON.parse(localStorage.bitsy_color_3d_panel_prefs );
 
 	// add missing panel prefs (if any)
 	// console.log(defaultPanelPrefs);
@@ -989,17 +1005,17 @@ function start() {
 	drawingThumbnailCtx = drawingThumbnailCanvas.getContext("2d");
 
 	// load custom font
-	if (localStorage.bitsy_3d_custom_font != null) {
-		var fontStorage = JSON.parse(localStorage.bitsy_3d_custom_font);
+    if (localStorage.bitsy_color_3d_custom_font != null) {
+		var fontStorage = JSON.parse(localStorage.bitsy_color_3d_custom_font);
 		fontManager.AddResource(fontStorage.name + ".bitsyfont", fontStorage.fontdata);
 	}
 	resetMissingCharacterWarning();
 
 	//load last auto-save
-	if (localStorage.bitsy_3d_game_data) {
+    if (localStorage.bitsy_color_3d_game_data) {
 		//console.log("~~~ found old save data! ~~~");
-		//console.log(localStorage.bitsy_3d_game_data);
-		document.getElementById("game_data").value = localStorage.bitsy_3d_game_data;
+		//console.log(localStorage.game_data);
+        document.getElementById("game_data").value = localStorage.bitsy_color_3d_game_data;
 		on_game_data_change_core();
 	}
 	else {
@@ -1012,7 +1028,7 @@ function start() {
 
 	// load panel preferences
 	var prefs = getPanelPrefs();
-	localStorage.bitsy_3d_panel_prefs = JSON.stringify(prefs); // save loaded prefs
+    localStorage.bitsy_color_3d_panel_prefs = JSON.stringify(prefs); // save loaded prefs
 	var sortedWorkspace = prefs.workspace.sort( function(a,b) { return a.position - b.position; } );
 	var editorContent = document.getElementById("editorContent");
 	for(i in sortedWorkspace) {
@@ -1038,8 +1054,8 @@ function start() {
 
 	// init color picker
 	colorPicker = new ColorPicker('colorPickerWheel', 'colorPickerSelect', 'colorPickerSliderThumb', 'colorPickerSliderBg', 'colorPickerHexText');
-	document.getElementById("colorPaletteOptionBackground").checked = true;
-	paletteTool = new PaletteTool(colorPicker,["colorPaletteLabelBackground", "colorPaletteLabelTile", "colorPaletteLabelSprite"],"paletteName");
+    paletteTool = new PaletteTool(colorPicker, selectColor,"paletteName"); //,selectColor
+    
 	events.Listen("palette_change", function(event) {
 		refreshGameData();
 	});
@@ -1110,8 +1126,8 @@ function start() {
 	localStorage.bitsy_3d_engine_version = JSON.stringify( version );
 
 	// load saved export settings
-	if( localStorage.bitsy_3d_export_settings ) {
-		export_settings = JSON.parse( localStorage.bitsy_3d_export_settings );
+    if (localStorage.bitsy_color_3d_export_settings ) {
+        export_settings = JSON.parse(localStorage.bitsy_color_3d_export_settings );
 		document.getElementById("pageColor").value = export_settings.page_color;
 	}
 
@@ -1581,6 +1597,22 @@ function duplicateDrawing() {
     paintTool.duplicateDrawing();
 }
 
+function flipDrawing(dir) {
+    paintTool.flipDrawing(dir);
+}
+
+function nudgeDrawing(dir) {
+    paintTool.nudgeDrawing(dir);
+}
+
+function rotateDrawing(dir) {
+    paintTool.rotateDrawing(dir);
+}
+
+function mirrorDrawing(dir) {
+    paintTool.mirrorDrawing(dir);
+}
+
 function removeAllItems( id ) {
 	function getFirstItemIndex(roomId, itemId) {
 		for(var i = 0; i < room[roomId].items.length; i++) {
@@ -1838,6 +1870,12 @@ function togglePaintGrid(e) {
 	paintTool.updateCanvas();
 }
 
+function togglePaintGrid(e) {
+    paintTool.drawPaintGrid = e.target.checked;
+    iconUtils.LoadIcon(document.getElementById("paintGridIcon"), paintTool.drawPaintGrid ? "visibility" : "visibility_off");
+    paintTool.updateCanvas();
+}
+
 function toggleMapGrid(e) {
 	roomTool.drawMapGrid = e.target.checked;
 	iconUtils.LoadIcon(document.getElementById("roomGridIcon"), roomTool.drawMapGrid ? "visibility" : "visibility_off");
@@ -1921,6 +1959,10 @@ function duplicatePalette() {
 
 function deletePalette() {
 	paletteTool.DeleteSelected();
+}
+
+function addColor() {
+    paletteTool.AddColor();
 }
 
 function roomPaletteChange(event) {
@@ -2133,6 +2175,18 @@ function renderAnimationPreview(id) {
 	renderAnimationThumbnail( "animationThumbnailFrame1", id, 0 );
 	renderAnimationThumbnail( "animationThumbnailFrame2", id, 1 );
 }
+function selectColor() {
+    console.log(this);
+    var colors = getPal(paletteTool.GetSelectedId());
+    var lastIndex = colors.length - 1;
+    if (this.value === undefined || this.value === null || this.value > lastIndex) {
+        paintTool.setPaintColor(0);
+        paletteTool.changeColorPickerIndex(0);
+    } else {
+        paintTool.setPaintColor(this.value);
+        paletteTool.changeColorPickerIndex(this.value);
+    }
+}
 
 // 3d editor addition:
 // set drawing type according to what tab is selected in paint explorer to prevent bugs
@@ -2302,7 +2356,7 @@ function on_game_data_change_core() {
 			name : fontName,
 			fontdata : fontManager.GetData(fontName)
 		};
-		localStorage.bitsy_3d_custom_font = JSON.stringify(fontStorage);
+        localStorage.bitsy_color_3d_custom_font = JSON.stringify(fontStorage);
 	}
 
 	updateInventoryUI();
@@ -2317,8 +2371,8 @@ function on_game_data_change_core() {
 
 function updateFontSelectUI() {
 	var fontStorage = null;
-	if (localStorage.bitsy_3d_custom_font != null) {
-		fontStorage = JSON.parse(localStorage.bitsy_3d_custom_font);
+    if (localStorage.bitsy_color_3d_custom_font != null) {
+        fontStorage = JSON.parse(localStorage.bitsy_color_3d_custom_font);
 	}
 
 	var fontSelect = document.getElementById("fontSelect");
@@ -2658,9 +2712,9 @@ function afterHidePanel(id) {
 
 // DEPRECATED
 function savePanelPref(id,visible) {
-	var prefs = localStorage.bitsy_3d_panel_prefs == null ? {} : JSON.parse( localStorage.bitsy_3d_panel_prefs );
+    var prefs = localStorage.bitsy_color_3d_panel_prefs == null ? {} : JSON.parse(localStorage.bitsy_color_3d_panel_prefs );
 	prefs[id] = visible;
-	localStorage.setItem( "bitsy_3d_panel_prefs", JSON.stringify(prefs) );
+    localStorage.setItem( "bitsy_color_3d_panel_prefs", JSON.stringify(prefs) );
 }
 
 function updatePanelPrefs() {
@@ -2687,8 +2741,8 @@ function updatePanelPrefs() {
 	}
 
 	// console.log(prefs);
-	localStorage.bitsy_3d_panel_prefs = JSON.stringify( prefs );
-	// console.log(localStorage.bitsy_3d_panel_prefs);
+    localStorage.bitsy_color_3d_panel_prefs = JSON.stringify( prefs );
+	// console.log(localStorage.panel_prefs);
 }
 
 
@@ -2881,10 +2935,10 @@ function importGameFromFile(e) {
 
 	reader.onloadend = function() {
 		var fileText = reader.result;
-		gameDataStr = exporter.importGame( fileText );
+        gameDataStr = exporter.importGame(fileText);
 
 		// change game data & reload everything
-		document.getElementById("game_data").value = gameDataStr;
+        document.getElementById("game_data").value = gameDataStr;
 		on_game_data_change();
 
 		paintExplorer.Refresh(drawing.type);
@@ -2911,7 +2965,7 @@ function importFontFromFile(e) {
 			name : customFontName,
 			fontdata : fileText
 		};
-		localStorage.bitsy_3d_custom_font = JSON.stringify(fontStorage);
+        localStorage.bitsy_color_3d_custom_font = JSON.stringify(fontStorage);
 
 		refreshGameData();
 		updateFontSelectUI();
@@ -3178,7 +3232,7 @@ function on_change_color_page() {
 	document.getElementById("roomPanel").style.background = hex;
 	export_settings.page_color = hex;
 
-	localStorage.bitsy_3d_export_settings = JSON.stringify( export_settings );
+	localStorage.bitsy_color_3d_export_settings = JSON.stringify( export_settings );
 }
 
 function getComplimentingColor(palId) {
@@ -3533,8 +3587,8 @@ function on_change_font(e) {
 		switchFont(e.target.value, true /*doPickTextDirection*/);
 	}
 	else {
-		if (localStorage.bitsy_3d_custom_font != null) {
-			var fontStorage = JSON.parse(localStorage.bitsy_3d_custom_font);
+        if (localStorage.bitsy_color_3d_custom_font != null) {
+            var fontStorage = JSON.parse(localStorage.bitsy_color_3d_custom_font);
 			switchFont(fontStorage.name, true /*doPickTextDirection*/);
 		}
 		else {

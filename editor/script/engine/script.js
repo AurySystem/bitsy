@@ -450,11 +450,13 @@ function itemFunc(environment,parameters,onReturn) {
 	onReturn(curItemCount);
 }
 
-function addOrRemoveTextEffect(environment,name) {
-	if( environment.GetDialogBuffer().HasTextEffect(name) )
-		environment.GetDialogBuffer().RemoveTextEffect(name);
-	else
-		environment.GetDialogBuffer().AddTextEffect(name);
+    function addOrRemoveTextEffect(environment, name, parameters) {
+        if (environment.GetDialogBuffer().HasTextEffect(name)) {
+            environment.GetDialogBuffer().RemoveTextEffect(name);
+        }
+        else {
+            environment.GetDialogBuffer().AddTextEffect(name, parameters);
+        }
 }
 
 function rainbowFunc(environment,parameters,onReturn) {
@@ -477,6 +479,11 @@ function color3Func(environment,parameters,onReturn) {
 	addOrRemoveTextEffect(environment,"clr3");
 	onReturn(null);
 }
+    
+function colorFunc(environment,parameters,onReturn) {
+    addOrRemoveTextEffect(environment, "clr", parameters[0]);
+	onReturn(null);
+    }
 
 function wavyFunc(environment,parameters,onReturn) {
 	addOrRemoveTextEffect(environment,"wvy");
@@ -657,7 +664,8 @@ var Environment = function() {
 	functionMap.set("rbw", rainbowFunc);
 	functionMap.set("clr1", color1Func);
 	functionMap.set("clr2", color2Func);
-	functionMap.set("clr3", color3Func);
+    functionMap.set("clr3", color3Func);
+    functionMap.set("clr", colorFunc);
 	functionMap.set("wvy", wavyFunc);
 	functionMap.set("shk", shakyFunc);
 	functionMap.set("printSprite", printSpriteFunc);
@@ -1028,7 +1036,7 @@ function isUndefinedBlock(node) {
 	return node.type === "code_block" && node.children.length > 0 && node.children[0].type === "undefined";
 }
 
-var textEffectBlockNames = ["clr1", "clr2", "clr3", "wvy", "shk", "rbw", "printSprite", "printItem", "printTile", "print", "say", "br"];
+var textEffectBlockNames = ["clr1", "clr2", "clr3", "clr", "wvy", "shk", "rbw", "printSprite", "printItem", "printTile", "print", "say", "br"];
 function isTextEffectBlock(node) {
 	if (node.type === "code_block") {
 		if (node.children.length > 0 && node.children[0].type === "function") {
@@ -1684,8 +1692,7 @@ var Parser = function(env) {
 			codeState = ParseCode(codeState);
 			var codeBlockNode = codeState.rootNode;
 			curLineNodeList.push(codeBlockNode);
-
-			curLineIsEmpty = false;
+            curLineIsEmpty = false;
 
 			// lists count as dialog text, because they can contain it
 			if (isMultilineListBlock(codeBlockNode)) {

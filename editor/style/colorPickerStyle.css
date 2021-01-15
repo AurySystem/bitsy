@@ -39,12 +39,32 @@
 	width: 140px;
 }
 
+#colorPaletteViewport {
+    margin-top: 5px;
+    padding: 12px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    height: 130px;
+    overflow: scroll;
+    display: block;
+    white-space: normal;
+    border: solid 1px #ccccff;
+    border-radius: 2px;
+    resize: both;
+    width: 224px;
+}
+
+#colorPaletteContent {
+    /*width:224px;*/
+    margin: 0px;
+}
+
 #colorPaletteForm input[type=radio] + label {
-	display: block;
-	margin-bottom: 4px;
-	background: #e8e8ff;
-	border-radius: 4px;
-	border: solid 1px #ddd;
+    display: inline-block;
+    margin-bottom: 4px;
+    background: #e8e8ff;
+    border-radius: 4px;
+    border: solid 1px #ddd;
 }
 
 #colorPaletteForm input[type=radio]:checked + label {

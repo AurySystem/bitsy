@@ -13,4 +13,10 @@ package-lock.json
 build/*
 cache/*
 experiments/node_modules/*
+.vs/VSWorkspaceState.json
+.vs/slnx.sqlite
+.vs/ProjectSettings.json
+.vs/bitsy/v16/.suo
+.vs/bitsy/v15/.suo
+.vs/config/applicationhost.config
 releases
