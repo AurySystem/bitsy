@@ -102,9 +102,18 @@ function sortedRoomIdList() {
 	return sortedBase36IdList( room );
 }
 
+var specialDialogTags = [];
+specialDialogTags.push('DATA3D');
+specialDialogTags.push('DRAWINGSIZE');
+
 function sortedDialogIdList() {
 	var keyList = Object.keys(dialog);
 	keyList.splice(keyList.indexOf("title"), 1);
+	// bitsy 3d addition: filter out dialog id for special dialog entries like DATA3D and DRAWINGSIZE
+	specialDialogTags.forEach(function (tag) {
+        var i = keyList.indexOf(tag);
+        if (i !== -1) keyList.splice(i, 1);
+	});
 	var keyObj = {};
 	for (var i = 0; i < keyList.length; i++) {
 		keyObj[keyList[i]] = {};
@@ -246,23 +255,84 @@ function makeItem(id,imageData) { // NOTE : same as tile right now? make more li
 	makeDrawing(drwId,imageData);
 }
 
+/* CUSTOMIZABLE DRAWING SIZE */
+function validateNewDrawingSize(newSize) {
+	newSize = parseInt(newSize);
+	if (isNaN(newSize) || newSize <= 0) {
+		console.warn('drawing size ' + newSize + ' is invalid! resetting to 8')
+		newSize = 8;
+	}
+	return newSize;
+}
+
+function setNewDrawingSize (newSize) {
+	if (!dialog['DRAWINGSIZE']) {
+		dialog['DRAWINGSIZE'] = {
+	        src: null,
+	        name: null,
+	    };
+	}
+	dialog['DRAWINGSIZE'].src = '' + newSize;
+	refreshGameData();
+}
+
+function getNewDrawingSize () {
+	return validateNewDrawingSize(dialog['DRAWINGSIZE'] && dialog['DRAWINGSIZE'].src);
+}
+
 function makeDrawing(id,imageData) {
+	var newSize = getNewDrawingSize();
 	if (!imageData) {
-		imageData = [[
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0]
-		]];
+		// initialize with nested array for the first frame
+		imageData = [[]];
+		for (var y = 0; y < newSize; y++) {
+			imageData[0][y] = [];
+				for (var x = 0; x < newSize; x++) {
+					imageData[0][y][x] = 0;
+				}
+		}
 	}
 	// TODO RENDERER : stop using global renderer
 	renderer.SetImageSource(id,imageData);
 	// TODO RENDERER : re-render images?
 }
+
+/* DRAWING SIZE UI */
+function onChangeDrawingSize(event) {
+	var newSize;
+	if (event.target.value === 'custom') {
+		newSize = validateNewDrawingSize(document.getElementById('newDrawingSizeCustomInput').value);
+		document.getElementById('newDrawingSizeCustomSpan').style.display = 'inline-block';
+	} else {
+		newSize = validateNewDrawingSize(event.target.value);
+		if (event.target.type === 'radio') {
+			// if we used a preset attached to a radio button, hide custom size input
+			document.getElementById('newDrawingSizeCustomSpan').style.display = 'none';
+		} else {
+			// if we used an input element for custom size, make sure to overwrite invalid value
+			event.target.value = newSize;
+		}
+	}
+	setNewDrawingSize(newSize);
+	console.log('changed new drawing size to ' + newSize);
+}
+
+function updateDrawingSizeUi() {
+	var newSize = getNewDrawingSize();
+	if ([8, 16].indexOf(newSize) !== -1) {
+		document.getElementById('newDrawingSize' + newSize).checked = true;
+		document.getElementById('newDrawingSizeCustomSpan').style.display = 'none';
+	} else {
+		document.getElementById("newDrawingSizeCustom").checked = true;
+		document.getElementById('newDrawingSizeCustomSpan').style.display = 'inline-block';
+		document.getElementById('newDrawingSizeCustomInput').value = newSize;
+	}
+}
+
+// update drawing size ui when loading new game data or when game data is changed
+events.Listen("game_data_change", function() {
+    updateDrawingSizeUi();
+});
 
 /* EVENTS */
 function on_change_title(e) {
@@ -590,7 +660,7 @@ function setDefaultGameState() {
 	var defaultData = Resources["defaultGameData.bitsy"];
 	// console.log("DEFAULT DATA \n" + defaultData);
 	document.getElementById("game_data").value = defaultData;
-	localStorage.game_data = document.getElementById("game_data").value; // save game
+	localStorage.bitsy_3d_game_data = document.getElementById("game_data").value; // save game
 	clearGameData();
 	parseWorld(document.getElementById("game_data").value); // load game
 
@@ -659,9 +729,9 @@ function refreshGameData() {
 	var gameDataNoFonts = serializeWorld(true);
 	document.getElementById("game_data").value = showFontDataInGameData ? serializeWorld() : gameDataNoFonts;
 
-	// localStorage.setItem("game_data", gameData); //auto-save
+	// localStorage.setItem("bitsy_3d_game_data", gameData); //auto-save
 
-	localStorage.setItem("game_data", gameDataNoFonts);
+	localStorage.setItem("bitsy_3d_game_data", gameDataNoFonts);
 }
 
 /* TIMER */
@@ -797,12 +867,12 @@ var defaultPanelPrefs = {
 
 function getPanelPrefs() {
 	// (TODO: weird that engine version and editor version are the same??)
-	var useDefaultPrefs = ( localStorage.engine_version == null ) ||
-							( localStorage.panel_prefs == null ) ||
-							( JSON.parse(localStorage.engine_version).major < 6 ) ||
-							( JSON.parse(localStorage.engine_version).minor < 0 );
+	var useDefaultPrefs = ( localStorage.bitsy_3d_engine_version == null ) ||
+							( localStorage.bitsy_3d_panel_prefs == null ) ||
+							( JSON.parse(localStorage.bitsy_3d_engine_version).major < 6 ) ||
+							( JSON.parse(localStorage.bitsy_3d_engine_version).minor < 0 );
 
-	var prefs = useDefaultPrefs ? defaultPanelPrefs : JSON.parse( localStorage.panel_prefs );
+	var prefs = useDefaultPrefs ? defaultPanelPrefs : JSON.parse( localStorage.bitsy_3d_panel_prefs );
 
 	// add missing panel prefs (if any)
 	// console.log(defaultPanelPrefs);
@@ -888,7 +958,7 @@ function start() {
 
 	// localization
 	if (urlFlags["lang"] != null) {
-		localStorage.editor_language = urlFlags["lang"]; // need to verify this is real language?
+		localStorage.bitsy_3d_editor_language = urlFlags["lang"]; // need to verify this is real language?
 	}
 	localization = new Localization();
 
@@ -919,17 +989,17 @@ function start() {
 	drawingThumbnailCtx = drawingThumbnailCanvas.getContext("2d");
 
 	// load custom font
-	if (localStorage.custom_font != null) {
-		var fontStorage = JSON.parse(localStorage.custom_font);
+	if (localStorage.bitsy_3d_custom_font != null) {
+		var fontStorage = JSON.parse(localStorage.bitsy_3d_custom_font);
 		fontManager.AddResource(fontStorage.name + ".bitsyfont", fontStorage.fontdata);
 	}
 	resetMissingCharacterWarning();
 
 	//load last auto-save
-	if (localStorage.game_data) {
+	if (localStorage.bitsy_3d_game_data) {
 		//console.log("~~~ found old save data! ~~~");
-		//console.log(localStorage.game_data);
-		document.getElementById("game_data").value = localStorage.game_data;
+		//console.log(localStorage.bitsy_3d_game_data);
+		document.getElementById("game_data").value = localStorage.bitsy_3d_game_data;
 		on_game_data_change_core();
 	}
 	else {
@@ -942,7 +1012,7 @@ function start() {
 
 	// load panel preferences
 	var prefs = getPanelPrefs();
-	localStorage.panel_prefs = JSON.stringify(prefs); // save loaded prefs
+	localStorage.bitsy_3d_panel_prefs = JSON.stringify(prefs); // save loaded prefs
 	var sortedWorkspace = prefs.workspace.sort( function(a,b) { return a.position - b.position; } );
 	var editorContent = document.getElementById("editorContent");
 	for(i in sortedWorkspace) {
@@ -1037,11 +1107,11 @@ function start() {
 	// on_change_color_sprite();
 
 	// save latest version used by editor (for compatibility)
-	localStorage.engine_version = JSON.stringify( version );
+	localStorage.bitsy_3d_engine_version = JSON.stringify( version );
 
 	// load saved export settings
-	if( localStorage.export_settings ) {
-		export_settings = JSON.parse( localStorage.export_settings );
+	if( localStorage.bitsy_3d_export_settings ) {
+		export_settings = JSON.parse( localStorage.bitsy_3d_export_settings );
 		document.getElementById("pageColor").value = export_settings.page_color;
 	}
 
@@ -1073,6 +1143,8 @@ function start() {
 }
 
 function newDrawing() {
+	// 3d editor fix: make sure the right type is selected
+	paintExplorerResetTabToType(paintExplorerGetCurType());
 	paintTool.newDrawing();
 }
 
@@ -1222,7 +1294,11 @@ function selectRoom(roomId) {
 		roomTool.drawEditMap();
 		paintTool.updateCanvas();
 		updateRoomPaletteSelect();
-		paintExplorer.Refresh( paintTool.drawing.type, true /*doKeepOldThumbnails*/ );
+
+		// 3d editor fix: refresh paint explorer according to its own drawing type
+		// which can be different from the paint tool to allow for convenient drag & drop
+		// this fixes the bug when drawing thumbnails aren't loaded properly
+		paintExplorer.Refresh( paintExplorerGetCurType(), true /*doKeepOldThumbnails*/ );
 
 		if (drawing.type === TileType.Tile) {
 			updateWallCheckboxOnCurrentTile();
@@ -2058,7 +2134,48 @@ function renderAnimationPreview(id) {
 	renderAnimationThumbnail( "animationThumbnailFrame2", id, 1 );
 }
 
+// 3d editor addition:
+// set drawing type according to what tab is selected in paint explorer to prevent bugs
+function paintExplorerGetCurType() {
+	var t = null;
+	[
+        'paintExplorerOptionAvatar',
+        'paintExplorerOptionTile',
+        'paintExplorerOptionSprite',
+        'paintExplorerOptionItem'
+    ].forEach(function(elId) {
+        var el = document.getElementById(elId);
+        if (el.checked) {
+            t = TileType[el.value.charAt(0).toUpperCase() + el.value.slice(1)];
+        }
+    });
+	return t;
+}
+
+function paintExplorerResetTabToType(type) {
+	switch (type) {
+    	case TileType.Avatar:
+    		on_paint_avatar();
+    		break;
+    	case TileType.Tile:
+    		on_paint_tile();
+    		break;
+		case TileType.Sprite:
+			on_paint_sprite();
+			break;
+		case TileType.Item:
+			on_paint_item();
+			break;
+    };
+}
+
 function selectPaint() {
+	// 3d editor addition:
+	// set drawing type according to what tab is selected in paint explorer to prevent bugs
+    drawing.type = paintExplorerGetCurType();
+    paintExplorerResetTabToType(drawing.type);
+	paintExplorer.ChangeSelection( this.value );
+
 	if (drawing.id === this.value) {
 		showPanel("paintPanel", "paintExplorerPanel");
 	}
@@ -2185,7 +2302,7 @@ function on_game_data_change_core() {
 			name : fontName,
 			fontdata : fontManager.GetData(fontName)
 		};
-		localStorage.custom_font = JSON.stringify(fontStorage);
+		localStorage.bitsy_3d_custom_font = JSON.stringify(fontStorage);
 	}
 
 	updateInventoryUI();
@@ -2200,8 +2317,8 @@ function on_game_data_change_core() {
 
 function updateFontSelectUI() {
 	var fontStorage = null;
-	if (localStorage.custom_font != null) {
-		fontStorage = JSON.parse(localStorage.custom_font);
+	if (localStorage.bitsy_3d_custom_font != null) {
+		fontStorage = JSON.parse(localStorage.bitsy_3d_custom_font);
 	}
 
 	var fontSelect = document.getElementById("fontSelect");
@@ -2541,9 +2658,9 @@ function afterHidePanel(id) {
 
 // DEPRECATED
 function savePanelPref(id,visible) {
-	var prefs = localStorage.panel_prefs == null ? {} : JSON.parse( localStorage.panel_prefs );
+	var prefs = localStorage.bitsy_3d_panel_prefs == null ? {} : JSON.parse( localStorage.bitsy_3d_panel_prefs );
 	prefs[id] = visible;
-	localStorage.setItem( "panel_prefs", JSON.stringify(prefs) );
+	localStorage.setItem( "bitsy_3d_panel_prefs", JSON.stringify(prefs) );
 }
 
 function updatePanelPrefs() {
@@ -2570,8 +2687,8 @@ function updatePanelPrefs() {
 	}
 
 	// console.log(prefs);
-	localStorage.panel_prefs = JSON.stringify( prefs );
-	// console.log(localStorage.panel_prefs);
+	localStorage.bitsy_3d_panel_prefs = JSON.stringify( prefs );
+	// console.log(localStorage.bitsy_3d_panel_prefs);
 }
 
 
@@ -2794,7 +2911,7 @@ function importFontFromFile(e) {
 			name : customFontName,
 			fontdata : fileText
 		};
-		localStorage.custom_font = JSON.stringify(fontStorage);
+		localStorage.bitsy_3d_custom_font = JSON.stringify(fontStorage);
 
 		refreshGameData();
 		updateFontSelectUI();
@@ -3007,6 +3124,7 @@ function addNewFrameToDrawing(drwId) {
 	var imageSource = renderer.GetImageSource(drwId);
 	var firstFrame = imageSource[0];
 	var newFrame = [];
+	var tilesize = firstFrame.length;
 	for (var y = 0; y < tilesize; y++) {
 		newFrame.push([]);
 		for (var x = 0; x < tilesize; x++) {
@@ -3060,7 +3178,7 @@ function on_change_color_page() {
 	document.getElementById("roomPanel").style.background = hex;
 	export_settings.page_color = hex;
 
-	localStorage.export_settings = JSON.stringify( export_settings );
+	localStorage.bitsy_3d_export_settings = JSON.stringify( export_settings );
 }
 
 function getComplimentingColor(palId) {
@@ -3415,8 +3533,8 @@ function on_change_font(e) {
 		switchFont(e.target.value, true /*doPickTextDirection*/);
 	}
 	else {
-		if (localStorage.custom_font != null) {
-			var fontStorage = JSON.parse(localStorage.custom_font);
+		if (localStorage.bitsy_3d_custom_font != null) {
+			var fontStorage = JSON.parse(localStorage.bitsy_3d_custom_font);
 			switchFont(fontStorage.name, true /*doPickTextDirection*/);
 		}
 		else {

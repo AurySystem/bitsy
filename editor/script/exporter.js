@@ -44,6 +44,10 @@ this.exportGame = function(gameData, title, pageColor, filename, isFixedSize, si
 
 	// console.log(html);
 
+	// include 3d hack
+	html = replaceTemplateMarker( html, "@@babylon", Resources["babylon.js"] );
+	html = replaceTemplateMarker( html, "@@bitsy3d", Resources["bitsy3d.js"] );
+
 	ExporterUtils.DownloadFile( filename, html );
 }
 

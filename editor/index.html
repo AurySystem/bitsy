@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Bitsy</title>
+		<title>Bitsy 3D</title>
 		<link rel="icon" type="image/png" href="image/cat5.png" />
 
 		<!-- STYLES -->
@@ -46,6 +46,14 @@
 		<script src="script/dialog_editor.js"></script>
 		<script src="script/editor.js"></script>
 		<script src="script/inventory.js"></script>
+	
+		<!-- 3D EDITOR DEPENDENCIES -->
+		<script src="libs/babylon.js"></script>
+
+		<!-- 3D EDITOR -->
+		<script src="script/3d/bitsy3d.js"></script>
+		<script src="script/3d/name-tags-compatibility.js"></script>
+		<script src="script/3d/editor3d.js"></script>
 
 		<!-- FONTS -->
 		<link href="style/googleNunito.css" rel="stylesheet">
@@ -103,10 +111,22 @@
 					<span class="localize room_tool_name">room</span>
 				</label>
 
+				<input type="checkbox" value="room3dPanel" id="room3dCheck" onclick="togglePanelAnimated(event);" checked/>
+				<label title="show / hide 3d editor window" for="room3dCheck">
+					<span class="bitsy_icon icon_space_right">scene_3d</span>
+					<span>3d scene</span>
+				</label>
+
 				<input type="checkbox" value="exitsPanel" id="exitsCheck" onclick="togglePanelAnimated(event);" />
 				<label title="show / hide exits & endings window" for="exitsCheck">
 					<span class="bitsy_icon icon_space_right">exits_endings</span>
 					<span class="localize marker_tool_name">exits & endings</span>
+				</label>
+
+				<input type="checkbox" value="meshPanel" id="meshCheck" onclick="togglePanelAnimated(event);"  checked/>
+				<label title="show / hide mesh window" for="meshCheck">
+					<span class="bitsy_icon icon_space_right">settings_3d</span>
+					<span>3d settings</span>
 				</label>
 
 				<input type="checkbox" value="paintPanel" id="paintCheck" onclick="togglePanelAnimated(event);"  checked/>
@@ -223,6 +243,7 @@
 							<span class="bitsy_icon icon_large icon_space_right">about</span>
 							<span class="localize about_tool_title">about bitsy</span>
 							 <span class="curVersionLabel"></span>
+							 <span>3d</span>
 						</div>
 					</div>
 					<div id="aboutInner">
@@ -242,6 +263,20 @@
 						</p>
 
 						<p>
+							<span>this is a flavor of bitsy extended with 3d editor</span>
+						</p>
+						<p>
+							<span>huge thank you to adam for bitsy, sean for making the original 3d hack that inspired me to get into bitsy hacking, eventually resulting in this 3d editor, ayo, freya, dana, ash, thatguynm, rose, onion, candle and other bitsy folks for experimenting with bitsy 3d stuff early on, for their advice, conversations, support and encouragement. thank you to freya, ayo, sean, ceri, candle dana and bob for supporting me on patreon💜</span>
+						</p>
+
+						<p>
+							- 
+							<a target="_blank" href="https://www.twitter.com/aloelazoe">
+								<span>elkie</span>
+							</a>
+						</p>
+
+						<p>
 							getting started: <br/>
 							<a target="_blank" href="https://www.shimmerwitch.space/bitsyTutorial.html">tutorial</a>
 						</p>
@@ -255,13 +290,287 @@
 
 						<p>
 							development: <br/>
-							<a target="_blank" href="https://github.com/le-doux/bitsy/blob/master/CREDITS.md">contributors</a> |
-							<a target="_blank" href="https://github.com/le-doux/bitsy/blob/master/VERSION_NOTES.txt">version notes</a> |
-							<a target="_blank" href="https://github.com/le-doux/bitsy/issues">report a bug</a> |
-							<a target="_blank" href="https://github.com/le-doux/bitsy">source code</a>
+							<a target="_blank" href="https://github.com/aloelazoe/bitsy-3d/blob/master/CREDITS.md">contributors</a> |
+							<a target="_blank" href="https://github.com/aloelazoe/bitsy-3d/blob/master/VERSION_NOTES.txt">version notes</a> |
+							<a target="_blank" href="https://github.com/aloelazoe/bitsy-3d/issues">report a bug</a> |
+							<a target="_blank" href="https://github.com/aloelazoe/bitsy-3d">source code</a>
 						</p>
 					</div>
 				</div>
+
+				<div id="room3dPanel" class="panel">
+					<div class="bar">
+						<button title="minimize 3d editor window" class="light panelBarClose" onclick="hidePanel('room3dPanel');">
+							<span class="bitsy_icon">close</span>
+						</button>
+
+						<div title="3d editor window" class="panelBarTitle" onmousedown="grabCard(event);">
+							<span class="bitsy_icon icon_large icon_space_right">scene_3d</span>
+							<span>3d scene</span>
+						</div>
+					</div>
+
+					<div style="margin-bottom:2px;">			
+						<input type="checkbox" id="playModeCheck3d" onclick="togglePlayMode(event);" />
+						<label title="play / pause game" for="playModeCheck3d">
+							<span id="playModeIcon" class="bitsy_icon">play</span>
+							<span id="playModeText" class="localize play_game">play</span> <!-- TODO LOCALIZE: also stop_game -->
+						</label>
+
+						<input type="checkbox" id="previewCameraInputScene3d" onclick="meshPanel.switchPreviewCamera(event.target.checked);" />
+						<label id="previewCameraLabelScene3d" title="switch between editor and game cameras" for="previewCameraInputScene3d">
+							<span class="bitsy_icon">camera</span>
+						</label>
+
+						<input type="checkbox" id="axesGizmoCheck" onclick="room3dPanel.switchAxesGizmo(event);" checked/>
+						<label title="switch 3d axes gizmo on and off" for="axesGizmoCheck" style="padding-left: 7px; padding-bottom: 7px; padding-top: 6px; float: right; margin-right: 0px;">
+							<span class="bitsy_icon icon_space_right">settings_3d</span>
+						</label>
+					</div>
+
+					<div id="gameContainer" style="position: relative;">
+						<canvas id="sceneCanvas" width="512" height="512" style="width: 100%; height: 100%;"></canvas>
+						<canvas id="textCanvas" style="width: 100%; height: auto; position: absolute; left: 0%; background: none; pointer-events: none;"></canvas>
+					</div>
+
+					<div id="room3dStackControls" class="controlBox">
+						<button title="previous stack" class="color0" onclick="room3dPanel.selectAdjacent(-1);">
+							<span class="bitsy_icon">previous</span>
+						</button>
+						<button title="next stack" class="color0" onclick="room3dPanel.selectAdjacent(1);">
+							<span class="bitsy_icon">next</span>
+						</button>
+						<button title="add new stack" class="color0" onclick="newRoom();">
+							<span class="bitsy_icon">add</span>
+						</button>
+						<button title="duplicate stack" class="color0" onclick="room3dPanel.duplicate();">
+							<span class="bitsy_icon">copy</span>
+						</button>
+						<button title="delete stack" class="color0" onclick="room3dPanel.delete();">
+							<span class="bitsy_icon">delete</span>
+						</button>
+						<button title="take a screenshot" class="color0" onclick="editor3d.takeScreenshot = true">
+							<span class="bitsy_icon">record_snapshot</span>
+						</button>
+						<span id="room3dControlsTip"><b>shift</b>: grid, <b>alt</b>: select, <b>[controlKeyDisplayName]</b>: remove</span>
+					</div>
+				</div>
+
+				<div id="meshPanel" class="panel">
+					<div class="bar">
+						<button title="minimize mesh window" class="light panelBarClose" onclick="hidePanel('meshPanel');">
+							<span class="bitsy_icon">close</span>
+						</button>
+
+						<div title="mesh window" class="panelBarTitle" onmousedown="grabCard(event);">
+							<span class="bitsy_icon icon_large icon_space_right">settings</span>
+							<span>3d settings</span>
+						</div>
+					</div>
+
+					<form>
+						<input type="radio" name="3d settings tabs" value="mesh" onclick="meshPanel.onTabMesh();" id="settings3dTabMesh" checked>
+						<label title="configure the mesh" for="settings3dTabMesh" class="left">
+							<span class="bitsy_icon icon_space_right">cube_3d</span>
+							<span>mesh</span>
+						</label>
+						<input type="radio" name="3d settings tabs" value="camera" onclick="meshPanel.onTabCamera();" id="settings3dTabCamera">
+						<label title="configure the camera" for="settings3dTabCamera" class="middle">
+							<span class="bitsy_icon icon_space_right">camera</span>
+							<span>camera</span>
+						</label>
+						<input type="radio" name="3d settings tabs" value="game" onclick="meshPanel.onTabGame();" id="settings3dTabGame">
+						<label title="game settings" for="settings3dTabGame" class="right">
+							<span class="bitsy_icon icon_space_right">settings</span>
+							<span>game</span>
+						</label>
+					</form>
+
+					<p id="playModeWarning" style="display:none">changes made in play mode won't be saved</p>
+
+					<div id="settings3dMesh">
+						<div id="meshBaseName" class="controlBox" style="margin-top: 8px">
+							<p>type id: name</p>
+						</div>
+
+						<form style="margin-bottom:5px;">
+							<input type="radio" name="mesh tab" value="base" onclick="meshPanel.onTabBase();" id="meshTabBase" checked>
+							<label title="configure the mesh" for="meshTabBase" class="left">
+								<span>base</span>
+							</label>
+							<input type="radio" name="mesh tab" value="children" onclick="meshPanel.onTabChildren();" id="meshTabChildren">
+							<label title="add child meshes to combine this object with others" for="meshTabChildren" class="right">
+								<span>children</span>
+							</label>
+						</form>
+
+						<form id="meshChildrenList" style="display:none; margin-top:5px; margin-bottom:5px;" ondrop="meshPanel.addChildDropHandler(event)" ondragover="meshPanel.addChildDragoverHandler(event)">
+							<!-- <div>
+								<input type="radio" name="children list" value="childMeshExample" onclick="meshPanel.selectChild(event);" id="childMeshExample" checked>
+								<label for="childMeshExample">
+									<span>childMeshExample</span>
+								</label>
+							</div> -->
+							<!-- children elements are added dynamically -->
+
+							<div id="meshAddChildButton" style="display:none; margin-top:2px; margin-bottom:7px;">
+								<input type="radio" name="children list" value="new" onclick="meshPanel.onAddChildButton(event);" id="addChildButtonInput">
+								<label for="addChildButtonInput" title="add another mesh as a 'child' object which will be positioned relative to this one, its 'parent'">
+									<span class="bitsy_icon">add</span>
+								</label>
+							</div>
+						</form>
+
+						<div id="meshAddChildArea" class="controlBox" ondrop="meshPanel.addChildDropHandler(event)" ondragover="meshPanel.addChildDragoverHandler(event)" style="display:none; margin-top:5px;">
+							<p style="margin: 20px">drag and drop a drawing from<br>"find drawing" panel<br>to add it as a child mesh</p>
+						</div>
+
+						<div id="meshConfig" class="controlBox" style="width: 256px">
+							<div id="meshType" title="model to use for displaying currently selected bitsy drawing in 3d">
+								<span>type</span>:
+								<select id="meshTypeSelect" onchange="meshPanel.onChangeType();">
+									<!-- options are added dynamically -->
+								</select>
+								<select title="select subtype" id="meshSubTypeSelect" onchange="meshPanel.onChangeType();">
+									<!-- options are added dynamically -->
+								</select>
+							</div>
+							<div id="meshTransparency" title="check if background color on this mesh should be made transparent">
+								<label for="meshTransparencyCheck">transparent background</label>:
+								<input type="checkbox" id="meshTransparencyCheck" style="display:initial" onchange="meshPanel.onChangeTransparency();">
+							</div>
+							<div class="meshAlpha" title="how opaque or translucent all non-transparent colors on this mesh should be">
+								<label for="meshAlphaInput">opacity:</label>
+								<input id="meshAlphaInput" type="number" value="1" min="0" max="1" step="0.01" style="width: 50px" onchange="meshPanel.onChangeAlpha(event);">
+							</div>
+							<div id="meshHidden" title="check if this drawing should only be visible in the editor">
+								<label for="meshHiddenCheck">hidden - only show in editor</label>:
+								<input type="checkbox" id="meshHiddenCheck" style="display:initial" onchange="meshPanel.onChangeHidden();">
+							</div>
+
+							<input type="checkbox" id="transformCheck" onclick="meshPanel.onToggleTransform();" />
+							<label title="translation (offset), rotation and scale settings" for="transformCheck">
+								<span>transform</span>
+								<span id="transformCheckIcon" class="bitsy_icon">arrow_up</span>
+							</label>
+
+							<div id="transform" style="display:none;">
+								<div id="transformTranslation">
+									<span class="bitsy_icon" title="translation (offset)" style="vertical-align:middle">translation</span>
+									<input type="text" id="transformTranslationX" title="translation on x axis" size="7" value="0">
+									<input type="text" id="transformTranslationY" title="translation on y axis" size="7" value="0">
+									<input type="text" id="transformTranslationZ" title="translation on z axis" size="7" value="0">
+								</div>
+								<div id="transformRotation">
+									<span class="bitsy_icon" title="rotation" style="vertical-align:middle">rotation</span>
+									<input type="text" id="transformRotationX" title="rotation in degrees around x axis" size="7" value="0">
+									<input type="text" id="transformRotationY" title="rotation in degrees around y axis" size="7" value="0">
+									<input type="text" id="transformRotationZ" title="rotation in degrees around z axis" size="7" value="0">
+								</div>
+								<div id="transformScale">
+									<span class="bitsy_icon" title="scale" style="vertical-align:middle">expand_more</span>
+									<input type="text" id="transformScaleX" title="scale on x axis" size="7" value="1">
+									<input type="text" id="transformScaleY" title="scale on y axis" size="7" value="1">
+									<input type="text" id="transformScaleZ" title="scale on z axis" size="7" value="1">
+								</div>
+							</div>
+						</div>
+					</div> <!-- settings3dMesh -->
+
+					<div id="settings3dCamera" class="controlBox" style="display: none; margin-top: 8px;">
+						<div id="previewCameraDiv" style="margin-bottom:2px;">			
+							<input type="checkbox" id="previewCameraInput" onclick="meshPanel.switchPreviewCamera(event.target.checked);" />
+							<label title="switch between editor and game cameras" for="previewCameraInput">
+								<span id="previewCameraIcon" class="bitsy_icon">visibility</span>
+								<span id="previewCameraSpan">preview game camera</span>
+							</label>
+						</div>
+
+						<select id="settings3dCameraPreset" title="select a camera preset" onchange="meshPanel.onChangeCameraPreset(event);">
+							<option value="custom" id="customCameraPresetOption">custom</option>
+							<!-- generate other options dynamically -->
+						</select>
+						<br>
+						<input type="checkbox" id="settings3dCameraAdvancedCheck" onclick="meshPanel.toggleAdvancedCameraSettings(event);">
+						<label title="show / hide advanced camera settings" for="settings3dCameraAdvancedCheck">
+							<span>advanced camera settings</span>
+							<span id="cameraAdvancedSettingsCheckIcon" class="bitsy_icon">arrow_up</span>
+						</label>
+						<br>
+						<div id="settings3dCameraAdvanced" style="display:none;">
+							<label for="settings3dCameraType">type: </label>
+							<select id="settings3dCameraType" onchange="meshPanel.onChangeCameraType(event);">
+								<!-- generate options dynamically -->
+							</select>
+							<br>
+							<label for="settings3dCameraMode">mode: </label>
+							<select id="settings3dCameraMode" onchange="meshPanel.onChangeCameraMode(event);">
+								<option value="perspective">perspective</option>
+								<option value="orthographic">orthographic</option>
+							</select>
+						</div>
+					</div>
+
+					<div id="settings3dGame" style="display: none; margin-top: 8px;">
+						<!-- todo: add reset button -->
+						<!-- engine size -->
+						<div class="controlBox" style="padding-bottom: 10px;">
+							<form>
+								<span>rendering resolution:</span>
+								<br/>
+								<input type="radio" name="engineSize" value="auto" onclick="meshPanel.onChangeEngineSize(event);" id="engineSizeOptionAuto" checked>
+								<label title="use display resolution" for="engineSizeOptionAuto" class="left">
+									<span class="bitsy_icon">pagesize_full</span>
+									<span>auto</span>
+								</label>
+
+								<input type="radio" name="engineSize" value="fixed" onclick="meshPanel.onChangeEngineSize(event);" id="engineSizeOptionFixed">
+								<label title="set rendering resolution manually" for="engineSizeOptionFixed" class="right">
+									<span class="bitsy_icon">pagesize_fixed</span>
+									<span>fixed</span>
+								</label>
+
+								<div id="engineSizeFixedInput" style="display:none; margin-top:10px;">
+									<span class="controlBox" style="margin-right:5px;">
+										width: <input type="number" min="0" value="512" style="width:60px;" id="engineWidthInput" onchange="meshPanel.onChangeEngineSize(event);"> px
+									</span>
+									<span class="controlBox">
+										height: <input type="number" min="0" value="512" style="width:60px;" id="engineHeightInput" onchange="meshPanel.onChangeEngineSize(event);"> px
+									</span>
+								</div>
+							</form>
+						</div>
+						<!-- canvas size -->
+						<div class="controlBox" style="padding-bottom: 10px;">
+							<form>
+								<span>canvas size:</span>
+								<br/>
+								<input type="radio" name="canvasSize" value="auto" onclick="meshPanel.onChangeCanvasSize(event);" id="canvasSizeOptionAuto" checked>
+								<label title="fit the screen. will maintain aspect ratio when using fixed rendering resolution" for="canvasSizeOptionAuto" class="left">
+									<span class="bitsy_icon">pagesize_full</span>
+									<span>auto</span>
+								</label>
+
+								<input type="radio" name="canvasSize" value="fixed" onclick="meshPanel.onChangeCanvasSize(event);" id="canvasSizeOptionFixed">
+								<label title="set canvas size manually" for="canvasSizeOptionFixed" class="right">
+									<span class="bitsy_icon">pagesize_fixed</span>
+									<span>fixed</span>
+								</label>
+
+								<div id="canvasSizeFixedInput" style="display:none; margin-top:10px;">
+									<span class="controlBox" style="margin-right:5px;">
+										width: <input type="number" min="0" value="512" style="width:60px;" id="canvasWidthInput" onchange="meshPanel.onChangeCanvasSize(event);"> px
+									</span>
+									<span class="controlBox">
+										height: <input type="number" min="0" value="512" style="width:60px;" id="canvasHeightInput" onchange="meshPanel.onChangeCanvasSize(event);"> px
+									</span>
+								</div>
+							</form>
+						</div>
+						<div id="gameSettings3dGrouped" class="controlBox"></div>
+					</div>
+
+				</div> <!-- meshPanel -->
 
 				<div id="roomPanel" class="panel">
 					<div class="bar">
@@ -1149,6 +1458,31 @@
 									</span>
 								</div>
 							</form>
+						</div>
+						<div class="controlBox" title="the size that new drawings will have by default">
+							<form>
+								<span>default size for new drawings:</span>
+								<br/>
+								<input type="radio" name="new drawing size" value="8" onclick="onChangeDrawingSize(event);" id="newDrawingSize8" checked>
+								<label for="newDrawingSize8" class="left">
+									<span>8x8 - classic</span>
+								</label>
+
+								<input type="radio" name="new drawing size" value="16" onclick="onChangeDrawingSize(event);" id="newDrawingSize16">
+								<label for="newDrawingSize16" class="middle">
+									<span>16x16 - hd</span>
+								</label>
+
+								<input type="radio" name="new drawing size" value="custom" onclick="onChangeDrawingSize(event);" id="newDrawingSizeCustom">
+								<label for="newDrawingSizeCustom" class="right">
+									<span>custom</span>
+								</label>
+							</form>
+							<div style="margin-top:5px;">
+								<span class="controlBox" id="newDrawingSizeCustomSpan" style="display:none;">
+									<input type="number" min="1" value="8" style="width:60px;" onchange="onChangeDrawingSize(event);" id="newDrawingSizeCustomInput">
+								</span>
+							</div>
 						</div>
 						<div class="controlBox">
 							<span class="localize font_label">font</span>:
