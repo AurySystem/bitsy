@@ -1276,12 +1276,12 @@ b3d.getTextureFromCache = b3d.getCache('tex', function(drawing, pal, transparenc
     var frameHeight = imageSource[0].length;
 
     // get the colors
-    var colors = bitsy.palette[pal].colors;
+    var colors = bitsy.palette[pal].colors.slice();
     var fg = [[255], [255], [255], [255]];
     if (!isNaN(parseInt(drawing.col))) {
         fg = bitsy.palette[pal].colors[drawing.col].slice();
     } else if (typeof drawing.col == 'string' && col != 'NaN') {
-        fg = Object.values(hexToRgb(drawing.col));
+        fg = Object.values(hexToRgb(drawing.col)).slice();
     }
         
 
@@ -1305,8 +1305,8 @@ b3d.getTextureFromCache = b3d.getCache('tex', function(drawing, pal, transparenc
                 var i = y * (frameWidth * numFrames * 4) + ((frameWidth * frameIndex) + x) * 4;
                 // grabs the current colors and aplies alpha
                 var px = curFrame[y][x];
-                var col = px === 1 ? fg : colors[px].slice();
-                col[3] = px === 0 ? transparency ? 0 : Math.round(alpha * 255):Math.round(alpha * 255);
+                var col = px == 1 ? fg : colors[px].slice();
+                col[3] = px == 0 ? transparency ? 0 : Math.round(alpha * 255) : Math.round(alpha * 255);
                 // iterate through red, green, blue and alpha components
                 // and put them into image data
                 for (var c = 0; c < col.length; c++) {
@@ -1389,7 +1389,7 @@ b3d.getMesh = function (drawing, pal, config) {
 };
 
 b3d.clearCaches = function (cachesArr, drw, col, pal) {
-    var r = new RegExp(`${drw || '\\D\\D\\D_\\w+?'},${col || '\\d*?'},${pal || '\\d*'}`);
+    var r = new RegExp(`${drw || '\\D\\D\\D_\\w+?'},${col || '(\\d*?|#\\w*)'},${pal || '\\d*'}`);
     cachesArr.forEach(function(cache) {
         Object.keys(cache)
             .filter(function(key) {return r.test(key);})
