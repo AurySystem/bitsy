@@ -1305,6 +1305,9 @@ b3d.getTextureFromCache = b3d.getCache('tex', function(drawing, pal, transparenc
                 var i = y * (frameWidth * numFrames * 4) + ((frameWidth * frameIndex) + x) * 4;
                 // grabs the current colors and aplies alpha
                 var px = curFrame[y][x];
+                if (px == undefined || px >= colors.length || isNaN(parseInt(px))) {
+                    px = 0;
+                }
                 var col = px == 1 ? fg : colors[px].slice();
                 col[3] = px == 0 ? transparency ? 0 : Math.round(alpha * 255) : Math.round(alpha * 255);
                 // iterate through red, green, blue and alpha components
