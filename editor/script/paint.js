@@ -153,6 +153,7 @@ function PaintTool(canvas, roomTool) {
 	curPaintColor.value = 1;
 
     this.setPaintColor = function (index) {
+        index = parseInt(index);
         curPaintColor.value = index;
         paintColorDummy = index;
     }
@@ -297,8 +298,7 @@ function PaintTool(canvas, roomTool) {
 		for (var x = 0; x < self.curTilesize; x++) {
 			for (var y = 0; y < self.curTilesize; y++) {
 				// draw alternate frame
-
-				if (self.isCurDrawingAnimated && curDrawingAltFrameData()[y][x] != 0) {
+                if (self.isCurDrawingAnimated && curDrawingAltFrameData()[y][x] != 0 && curDrawingAltFrameData()[y][x] < getPal(curPal()).length && !isNaN(parseInt(curDrawingAltFrameData()[y][x]))) {
                     ctx.globalAlpha = 0.3;
 
 					if (curDrawingAltFrameData()[y][x] != 1) {
@@ -312,7 +312,7 @@ function PaintTool(canvas, roomTool) {
 					ctx.globalAlpha = 1;
 				}
 				// draw current frame
-				if (curDrawingData()[y][x] != 0) {
+                if (curDrawingData()[y][x] != 0 && curDrawingData()[y][x] < getPal(curPal()).length && !isNaN(parseInt(curDrawingData()[y][x]))) {
 					if (curDrawingData()[y][x] != 1) {
 						ctx.fillStyle = "rgb(" + getPal(curPal())[curDrawingData()[y][x]][0] + "," + getPal(curPal())[curDrawingData()[y][x]][1] + "," + getPal(curPal())[curDrawingData()[y][x]][2] + ")";
 					}

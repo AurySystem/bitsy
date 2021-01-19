@@ -107,14 +107,17 @@ function imageDataFromImageSource(imageSource, pal, col) {
 			for (var sy = 0; sy < scale; sy++) {
 				for (var sx = 0; sx < scale; sx++) {
 					var pxl = (((y * scale) + sy) * tilesize * scale * 4) + (((x*scale) + sx) * 4);
-                    if (px === 1) {
+                    if (px == 1) {
                         img.data[pxl + 0] = foregroundColor.r;
                         img.data[pxl + 1] = foregroundColor.g;
                         img.data[pxl + 2] = foregroundColor.b;
                         img.data[pxl + 3] = 255;
                     }
                     else { //ch === 0
-                        if (px == undefined) { px = 0; }
+                        if (px == undefined || px >= colors.length || isNaN(parseInt(px))) {
+                            console.log('passed index out of palette range: ' + px);
+                            px = 0;
+                        }
                         img.data[pxl + 0] = colors[px][0];//r
                         img.data[pxl + 1] = colors[px][1];//g
                         img.data[pxl + 2] = colors[px][2];//b
