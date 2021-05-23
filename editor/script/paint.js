@@ -138,9 +138,11 @@ function PaintTool(canvas, roomTool) {
 	// TODO : variables
 	var self = this; // feels a bit hacky
 
-	var paint_scale = 32;
+	var defaultTilesize = this.curTilesize = 8;
+    var defaultPaintScale = this.curPaintScale = 32;
+
     var curPaintColor;
-    var paintColorDummy = 0;
+    var paintColorDummy = 1;
 	var curPaintBrush = 0;
 	var isPainting = false;
 	this.isCurDrawingAnimated = false; // TODO eventually this can be internal
@@ -154,8 +156,8 @@ function PaintTool(canvas, roomTool) {
 	this.explorer = null; // TODO: hacky way to tie this to a paint explorer -- should use events instead
 
 	//paint canvas & context
-	canvas.width = tilesize * paint_scale;
-	canvas.height = tilesize * paint_scale;
+	canvas.width = defaultTilesize * defaultPaintScale;
+	canvas.height = defaultTilesize * defaultPaintScale;
 	var ctx = canvas.getContext("2d");
 
 	// paint events
@@ -167,10 +169,22 @@ function PaintTool(canvas, roomTool) {
 	canvas.addEventListener("touchmove", onTouchMove);
 	canvas.addEventListener("touchend", onTouchEnd);
 
+	this.updateCurTilesize = function () {
+		var newTilesize = self.drawing.getFrameData(0).length;
+		self.curTilesize = newTilesize;
+		self.curPaintScale = defaultPaintScale / (newTilesize / defaultTilesize);
+    };
+
 	//painting color selector could be down better
 	curPaintColor = document.getElementById("paintColor");
 	curPaintColor.addEventListener("input", changePaintColor);
 	curPaintColor.value = 1;
+
+    this.setPaintColor = function (index) {
+        index = parseInt(index);
+        curPaintColor.value = index;
+        paintColorDummy = index;
+    }
 
 	// TODO : 
 	function onMouseDown(e) {
@@ -185,7 +199,7 @@ function PaintTool(canvas, roomTool) {
 
 		var off = getOffset(e);
 
-		off = mobileOffsetCorrection(off,e,(tilesize));
+		off = mobileOffsetCorrection(off,e,(self.curTilesize));
 
 		var x = Math.floor(off.x);
 		var y = Math.floor(off.y);
@@ -209,7 +223,7 @@ function PaintTool(canvas, roomTool) {
 		if (isPainting) {
 			var off = getOffset(e);
 
-			off = mobileOffsetCorrection(off,e,(tilesize));
+			off = mobileOffsetCorrection(off,e,(self.curTilesize));
 
 			var x = Math.floor(off.x);// / paint_scale);
 			var y = Math.floor(off.y);// / paint_scale);
@@ -276,7 +290,7 @@ function PaintTool(canvas, roomTool) {
         }
         else { paintColorDummy = 0;}
         console.log(paintColorDummy);
-	}
+    }
 
 	this.updateCanvas = function() {
 		//background
@@ -293,32 +307,45 @@ function PaintTool(canvas, roomTool) {
 		}
 		else if (self.drawing.type == TileType.Item) {
 			remap = item[self.drawing.id].col;
-		}
+        }
+
+        var remappedColor = [0,0,0]
+
+        if (typeof (remap) == 'string') {
+            var temp = hexToRgb(remap);
+            remappedColor[0] = temp.r;
+            remappedColor[1] = temp.g;
+            remappedColor[2] = temp.b;
+        } else {
+            remappedColor = getPal(curPal())[remap];
+        }
 
 		//draw pixels
-		for (var x = 0; x < 8; x++) {
-			for (var y = 0; y < 8; y++) {
+		for (var x = 0; x < self.curTilesize; x++) {
+			for (var y = 0; y < self.curTilesize; y++) {
 				// draw alternate frame
-				if (self.isCurDrawingAnimated && curDrawingAltFrameData()[y][x] != 0) {
-					ctx.globalAlpha = 0.3;
+                if (self.isCurDrawingAnimated && curDrawingAltFrameData()[y][x] != 0 && curDrawingAltFrameData()[y][x] < getPal(curPal()).length && !isNaN(parseInt(curDrawingAltFrameData()[y][x]))) {
+                    ctx.globalAlpha = 0.3;
+
 					if (curDrawingAltFrameData()[y][x] != 1) {
 						ctx.fillStyle = "rgb(" + getPal(curPal())[curDrawingAltFrameData()[y][x]][0] + "," + getPal(curPal())[curDrawingAltFrameData()[y][x]][1] + "," + getPal(curPal())[curDrawingAltFrameData()[y][x]][2] + ")";
 					}
 					else {
-						ctx.fillStyle = "rgb(" + getPal(curPal())[remap][0] + "," + getPal(curPal())[remap][1] + "," + getPal(curPal())[remap][2] + ")";
+                        ctx.fillStyle = "rgb(" + remappedColor[0] + "," + remappedColor[1] + "," + remappedColor[2] + ")";
 					}
-					ctx.fillRect(x * paint_scale, y * paint_scale, 1 * paint_scale, 1 * paint_scale);
+
+					ctx.fillRect(x*self.curPaintScale,y*self.curPaintScale,1*self.curPaintScale,1*self.curPaintScale);
 					ctx.globalAlpha = 1;
 				}
 				// draw current frame
-				if (curDrawingData()[y][x] != 0) {
+                if (curDrawingData()[y][x] != 0 && curDrawingData()[y][x] < getPal(curPal()).length && !isNaN(parseInt(curDrawingData()[y][x]))) {
 					if (curDrawingData()[y][x] != 1) {
 						ctx.fillStyle = "rgb(" + getPal(curPal())[curDrawingData()[y][x]][0] + "," + getPal(curPal())[curDrawingData()[y][x]][1] + "," + getPal(curPal())[curDrawingData()[y][x]][2] + ")";
 					}
-					else {
-						ctx.fillStyle = "rgb(" + getPal(curPal())[remap][0] + "," + getPal(curPal())[remap][1] + "," + getPal(curPal())[remap][2] + ")";
+                    else {
+                        ctx.fillStyle = "rgb(" + remappedColor[0] + "," + remappedColor[1] + "," + remappedColor[2] + ")";
 					}
-					ctx.fillRect(x*paint_scale,y*paint_scale,1*paint_scale,1*paint_scale);
+					ctx.fillRect(x*self.curPaintScale,y*self.curPaintScale,1*self.curPaintScale,1*self.curPaintScale);
 				}
 			}
 		}
@@ -327,14 +354,131 @@ function PaintTool(canvas, roomTool) {
 		if (self.drawPaintGrid) {
 			ctx.fillStyle = getContrastingColor();
 
-			for (var x = 1; x < tilesize; x++) {
-				ctx.fillRect(x*paint_scale,0*paint_scale,1,tilesize*paint_scale);
+			for (var x = 1; x < self.curTilesize; x++) {
+				ctx.fillRect(x*self.curPaintScale,0*self.curPaintScale,1,self.curTilesize*self.curPaintScale);
 			}
-			for (var y = 1; y < tilesize; y++) {
-				ctx.fillRect(0*paint_scale,y*paint_scale,tilesize*paint_scale,1);
+			for (var y = 1; y < self.curTilesize; y++) {
+				ctx.fillRect(0*self.curPaintScale,y*self.curPaintScale,self.curTilesize*self.curPaintScale,1);
 			}
 		}
-	}
+    }
+
+    this.flipDrawing = function (direction) {
+        var curDrawingCopy = curDrawingData().map(function (x) { return x.slice() });
+        for (var x = 0; x < self.curTilesize; x++) {
+            for (var y = 0; y < self.curTilesize; y++) {
+                var ypos = self.curTilesize - y - 1;
+                var xpos = self.curTilesize - x - 1;
+                if (direction == 0) {
+                    curDrawingData()[y][x] = curDrawingCopy[ypos][x];
+                } else {
+                    curDrawingData()[y][x] = curDrawingCopy[y][xpos];
+                }
+            }
+        }
+        self.updateCanvas();
+        updateDrawingData();
+        refreshGameData();
+        roomTool.drawEditMap();
+    }
+
+    this.rotateDrawing = function (direction) {
+        var curDrawingCopy = curDrawingData().map(function (x) { return x.slice() });
+        for (var x = 0; x < self.curTilesize; x++) {
+            for (var y = 0; y < self.curTilesize; y++) {
+                curDrawingData()[y][x] = curDrawingCopy[x][y];
+            }
+        }
+        self.flipDrawing(direction);
+        self.updateCanvas();
+    }
+
+    this.nudgeDrawing = function (direction) {
+        var curDrawingCopy = curDrawingData().map(function(x) {return x.slice() });
+        var addx = 0;
+        var addy = 0;
+        switch (direction) {
+            case 0://left
+                addx = 1;
+                break;
+            case 1://right
+                addx = -1;
+                break;
+            case 2://up
+                addy = 1;
+                break;
+            case 3://down
+                addy = -1;
+                break;
+        }
+        var maxTile = self.curTilesize - 1;
+        for (var x = 0; x < self.curTilesize; x++) {
+            for (var y = 0; y < self.curTilesize; y++) {
+                var ypos = y + addy;
+                var xpos = x + addx;
+                if (ypos < 0) { ypos = ypos + self.curTilesize; } else if (ypos > maxTile) { ypos = ypos - self.curTilesize; }
+                if (xpos < 0) { xpos = xpos + self.curTilesize; } else if (xpos > maxTile) { xpos = xpos - self.curTilesize; }
+                curDrawingData()[y][x] = curDrawingCopy[ypos][xpos];
+            }
+        }
+        self.updateCanvas();
+        updateDrawingData();
+        refreshGameData();
+        roomTool.drawEditMap();
+    }
+
+    this.mirrorDrawing = function (direction) {
+        var curDrawingCopy = curDrawingData().map(function (x) { return x.slice() });
+        var maxTile = self.curTilesize - 1;
+        var mirror = maxTile / 2;
+        console.log(maxTile + " mirrorpoint: " + mirror);
+        switch (direction) {
+            case 0://left to right
+                for (var x = 0; x < self.curTilesize; x++) {
+                    for (var y = 0; y < self.curTilesize; y++) {
+                        var ypos = y;
+                        var xpos = x;
+                        if (xpos < mirror) { xpos = self.curTilesize - x - 1; }
+                        curDrawingData()[y][x] = curDrawingCopy[ypos][xpos];
+                    }
+                }
+                break;
+            case 1://right to left
+                for (var x = 0; x < self.curTilesize; x++) {
+                    for (var y = 0; y < self.curTilesize; y++) {
+                        var ypos = y;
+                        var xpos = x;
+                        if (xpos > mirror) { xpos = self.curTilesize - x - 1; }
+                        curDrawingData()[y][x] = curDrawingCopy[ypos][xpos];
+                    }
+                }
+                break;
+            case 2://up to down
+                for (var x = 0; x < self.curTilesize; x++) {
+                    for (var y = 0; y < self.curTilesize; y++) {
+                        var ypos = y;
+                        var xpos = x;
+                        if (ypos < mirror) { ypos = self.curTilesize - y - 1; }
+                        curDrawingData()[y][x] = curDrawingCopy[ypos][xpos];
+                    }
+                }
+                break;
+            case 3://down to up
+                for (var x = 0; x < self.curTilesize; x++) {
+                    for (var y = 0; y < self.curTilesize; y++) {
+                        var ypos = y;
+                        var xpos = x;
+                        if (ypos > mirror) { ypos = self.curTilesize - y - 1; }
+                        curDrawingData()[y][x] = curDrawingCopy[ypos][xpos];
+                    }
+                }
+                break;
+        }
+        self.updateCanvas();
+        updateDrawingData();
+        refreshGameData();
+        roomTool.drawEditMap();
+    }
 
 	function curDrawingData() {
 		var frameIndex = (self.isCurDrawingAnimated ? self.curDrawingFrameIndex : 0);
@@ -348,7 +492,9 @@ function PaintTool(canvas, roomTool) {
 	}
 
 	// TODO : rename?
-	function updateDrawingData() {
+    function updateDrawingData() {
+        //temporary find out when this extra index gets added hopefully
+        console.trace(curDrawingData());
 		self.drawing.updateImageSource();
 	}
 
@@ -358,6 +504,7 @@ function PaintTool(canvas, roomTool) {
 	this.onReloadItem = null;
 	this.reloadDrawing = function() {
 		self.drawing.reloadImageSource();
+		self.updateCurTilesize();
 
 		if ( self.drawing.type === TileType.Tile) {
 			if(self.onReloadTile) {

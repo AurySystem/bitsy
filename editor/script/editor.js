@@ -86,6 +86,21 @@ function nextObjectId(idList) {
 	return idInt.toString(36);
 }
 
+function prevPaletteId() {
+    return prevObjectId(sortedPaletteIdList());
+}
+
+function prevObjectId(idList) {
+    if (idList.length <= 0) {
+        return "0";
+    }
+
+    var lastId = idList[idList.length - 1];
+    var idInt = parseInt(lastId, 36);
+    idInt--;
+    return idInt.toString(36);
+}
+
 function sortedTileIdList() {
 	return sortedBase36IdList( tile );
 }
@@ -102,9 +117,17 @@ function sortedRoomIdList() {
 	return sortedBase36IdList( room );
 }
 
+var specialDialogTags = [];
+specialDialogTags.push('DRAWINGSIZE');
+
 function sortedDialogIdList() {
 	var keyList = Object.keys(dialog);
 	keyList.splice(keyList.indexOf("title"), 1);
+	// filter out dialog id for special dialog entries like DATA3D and DRAWINGSIZE
+	specialDialogTags.forEach(function (tag) {
+        var i = keyList.indexOf(tag);
+        if (i !== -1) keyList.splice(i, 1);
+	});
 	var keyObj = {};
 	for (var i = 0; i < keyList.length; i++) {
 		keyObj[keyList[i]] = {};
@@ -246,23 +269,84 @@ function makeItem(id,imageData) { // NOTE : same as tile right now? make more li
 	makeDrawing(drwId,imageData);
 }
 
+/* CUSTOMIZABLE DRAWING SIZE */
+function validateNewDrawingSize(newSize) {
+	newSize = parseInt(newSize);
+	if (isNaN(newSize) || newSize <= 0) {
+		console.warn('drawing size ' + newSize + ' is invalid! resetting to 8')
+		newSize = 8;
+	}
+	return newSize;
+}
+
+function setNewDrawingSize (newSize) {
+	if (!dialog['DRAWINGSIZE']) {
+		dialog['DRAWINGSIZE'] = {
+	        src: null,
+	        name: null,
+	    };
+	}
+	dialog['DRAWINGSIZE'].src = '' + newSize;
+	refreshGameData();
+}
+
+function getNewDrawingSize () {
+	return validateNewDrawingSize(dialog['DRAWINGSIZE'] && dialog['DRAWINGSIZE'].src);
+}
+
 function makeDrawing(id,imageData) {
+	var newSize = getNewDrawingSize();
 	if (!imageData) {
-		imageData = [[
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0],
-			[0,0,0,0,0,0,0,0]
-		]];
+		// initialize with nested array for the first frame
+		imageData = [[]];
+		for (var y = 0; y < newSize; y++) {
+			imageData[0][y] = [];
+				for (var x = 0; x < newSize; x++) {
+					imageData[0][y][x] = 0;
+				}
+		}
 	}
 	// TODO RENDERER : stop using global renderer
 	renderer.SetImageSource(id,imageData);
 	// TODO RENDERER : re-render images?
 }
+
+/* DRAWING SIZE UI */
+function onChangeDrawingSize(event) {
+	var newSize;
+	if (event.target.value === 'custom') {
+		newSize = validateNewDrawingSize(document.getElementById('newDrawingSizeCustomInput').value);
+		document.getElementById('newDrawingSizeCustomSpan').style.display = 'inline-block';
+	} else {
+		newSize = validateNewDrawingSize(event.target.value);
+		if (event.target.type === 'radio') {
+			// if we used a preset attached to a radio button, hide custom size input
+			document.getElementById('newDrawingSizeCustomSpan').style.display = 'none';
+		} else {
+			// if we used an input element for custom size, make sure to overwrite invalid value
+			event.target.value = newSize;
+		}
+	}
+	setNewDrawingSize(newSize);
+	console.log('changed new drawing size to ' + newSize);
+}
+
+function updateDrawingSizeUi() {
+	var newSize = getNewDrawingSize();
+	if ([8, 16].indexOf(newSize) !== -1) {
+		document.getElementById('newDrawingSize' + newSize).checked = true;
+		document.getElementById('newDrawingSizeCustomSpan').style.display = 'none';
+	} else {
+		document.getElementById("newDrawingSizeCustom").checked = true;
+		document.getElementById('newDrawingSizeCustomSpan').style.display = 'inline-block';
+		document.getElementById('newDrawingSizeCustomInput').value = newSize;
+	}
+}
+
+// update drawing size ui when loading new game data or when game data is changed
+events.Listen("game_data_change", function() {
+    updateDrawingSizeUi();
+});
 
 /* EVENTS */
 function on_change_title(e) {
@@ -495,7 +579,9 @@ function duplicateDialog() {
 }
 
 function deleteDialog() {
-	if (curDialogEditorId != null && curDialogEditorId != titleDialogId) {
+	var shouldDelete = confirm("Are you sure you want to delete this dialog?");
+
+	if (shouldDelete && curDialogEditorId != null && curDialogEditorId != titleDialogId) {
 		var tempDialogId = curDialogEditorId;
 
 		nextDialog();
@@ -535,7 +621,7 @@ function deleteDialog() {
 
 		alwaysShowDrawingDialog = document.getElementById("dialogAlwaysShowDrawingCheck").checked = false;
 
-		events.Raise("dialog_update", { dialogId:tempDialogId, editorId:null });
+		events.Raise("dialog_delete", { dialogId:tempDialogId, editorId:null });
 	}
 }
 
@@ -588,7 +674,7 @@ function setDefaultGameState() {
 	var defaultData = Resources["defaultGameData.bitsy"];
 	// console.log("DEFAULT DATA \n" + defaultData);
 	document.getElementById("game_data").value = defaultData;
-	localStorage.game_data = document.getElementById("game_data").value; // save game
+	localStorage.bitsy_color_game_data = document.getElementById("game_data").value; // save game
 	clearGameData();
 	parseWorld(document.getElementById("game_data").value); // load game
 
@@ -660,7 +746,7 @@ function refreshGameData() {
 
 	// localStorage.setItem("game_data", gameData); //auto-save
 
-	localStorage.setItem("game_data", gameDataNoFonts);
+    localStorage.setItem("bitsy_color_game_data", gameDataNoFonts);
 }
 
 /* TIMER */
@@ -797,11 +883,11 @@ var defaultPanelPrefs = {
 function getPanelPrefs() {
 	// (TODO: weird that engine version and editor version are the same??)
 	var useDefaultPrefs = ( localStorage.engine_version == null ) ||
-							( localStorage.panel_prefs == null ) ||
+                            (localStorage.bitsy_color_panel_prefs == null ) ||
 							( JSON.parse(localStorage.engine_version).major < 6 ) ||
 							( JSON.parse(localStorage.engine_version).minor < 0 );
 
-	var prefs = useDefaultPrefs ? defaultPanelPrefs : JSON.parse( localStorage.panel_prefs );
+	var prefs = useDefaultPrefs ? defaultPanelPrefs : JSON.parse( localStorage.bitsy_color_panel_prefs );
 
 	// add missing panel prefs (if any)
 	// console.log(defaultPanelPrefs);
@@ -857,6 +943,9 @@ function start() {
 
 		// TODO -- over time I can move more things in here
 		// on the other hand this is still sort of global thing that we don't want TOO much of
+
+		// force re-load the dialog tool
+		openDialogTool(titleDialogId);
 	});
 
 	isPlayerEmbeddedInEditor = true; // flag for game player to make changes specific to editor
@@ -870,6 +959,17 @@ function start() {
 	detectBrowserFeatures();
 
 	readUrlFlags();
+
+	// load icons and replace placeholder elements
+	var elements = document.getElementsByClassName("bitsy_icon");
+	for(var i = 0; i < elements.length; i++) {
+		iconUtils.LoadIcon(elements[i]);
+	}
+
+	var elements = document.getElementsByClassName("bitsy_icon_anim");
+	for(var i = 0; i < elements.length; i++) {
+		iconUtils.LoadIconAnimated(elements[i]);
+	}
 
 	// localization
 	if (urlFlags["lang"] != null) {
@@ -904,17 +1004,17 @@ function start() {
 	drawingThumbnailCtx = drawingThumbnailCanvas.getContext("2d");
 
 	// load custom font
-	if (localStorage.custom_font != null) {
-		var fontStorage = JSON.parse(localStorage.custom_font);
+    if (localStorage.bitsy_color_custom_font != null) {
+		var fontStorage = JSON.parse(localStorage.bitsy_color_custom_font);
 		fontManager.AddResource(fontStorage.name + ".bitsyfont", fontStorage.fontdata);
 	}
 	resetMissingCharacterWarning();
 
 	//load last auto-save
-	if (localStorage.game_data) {
+    if (localStorage.bitsy_color_game_data) {
 		//console.log("~~~ found old save data! ~~~");
 		//console.log(localStorage.game_data);
-		document.getElementById("game_data").value = localStorage.game_data;
+        document.getElementById("game_data").value = localStorage.bitsy_color_game_data;
 		on_game_data_change_core();
 	}
 	else {
@@ -927,7 +1027,7 @@ function start() {
 
 	// load panel preferences
 	var prefs = getPanelPrefs();
-	localStorage.panel_prefs = JSON.stringify(prefs); // save loaded prefs
+    localStorage.bitsy_color_panel_prefs = JSON.stringify(prefs); // save loaded prefs
 	var sortedWorkspace = prefs.workspace.sort( function(a,b) { return a.position - b.position; } );
 	var editorContent = document.getElementById("editorContent");
 	for(i in sortedWorkspace) {
@@ -953,8 +1053,8 @@ function start() {
 
 	// init color picker
 	colorPicker = new ColorPicker('colorPickerWheel', 'colorPickerSelect', 'colorPickerSliderThumb', 'colorPickerSliderBg', 'colorPickerHexText');
-	document.getElementById("colorPaletteOptionBackground").checked = true;
-	paletteTool = new PaletteTool(colorPicker,["colorPaletteLabelBackground", "colorPaletteLabelTile", "colorPaletteLabelSprite"],"paletteName");
+    paletteTool = new PaletteTool(colorPicker, selectColor,"paletteName"); //,selectColor
+    
 	events.Listen("palette_change", function(event) {
 		refreshGameData();
 	});
@@ -1025,8 +1125,8 @@ function start() {
 	localStorage.engine_version = JSON.stringify( version );
 
 	// load saved export settings
-	if( localStorage.export_settings ) {
-		export_settings = JSON.parse( localStorage.export_settings );
+    if (localStorage.bitsy_color_export_settings ) {
+        export_settings = JSON.parse(localStorage.bitsy_color_export_settings );
 		document.getElementById("pageColor").value = export_settings.page_color;
 	}
 
@@ -1490,6 +1590,22 @@ function duplicateDrawing() {
     paintTool.duplicateDrawing();
 }
 
+function flipDrawing(dir) {
+    paintTool.flipDrawing(dir);
+}
+
+function nudgeDrawing(dir) {
+    paintTool.nudgeDrawing(dir);
+}
+
+function rotateDrawing(dir) {
+    paintTool.rotateDrawing(dir);
+}
+
+function mirrorDrawing(dir) {
+    paintTool.mirrorDrawing(dir);
+}
+
 function removeAllItems( id ) {
 	function getFirstItemIndex(roomId, itemId) {
 		for(var i = 0; i < room[roomId].items.length; i++) {
@@ -1530,14 +1646,14 @@ function reloadTile() {
 		}
 
 		document.getElementById("animation").setAttribute("style","display:block;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_more";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_more");
 		renderAnimationPreview( drawing.id );
 	}
 	else {
 		paintTool.isCurDrawingAnimated = false;
 		document.getElementById("animatedCheckbox").checked = false;
 		document.getElementById("animation").setAttribute("style","display:none;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_less";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_less");
 	}
 
 	// wall UI
@@ -1562,11 +1678,11 @@ function updateWallCheckboxOnCurrentTile() {
 
 	if (isCurTileWall) {
 		document.getElementById("wallCheckbox").checked = true;
-		document.getElementById("wallCheckboxIcon").innerHTML = "border_outer";
+		iconUtils.LoadIcon(document.getElementById("wallCheckboxIcon"), "wall_on");
 	}
 	else {
 		document.getElementById("wallCheckbox").checked = false;
-		document.getElementById("wallCheckboxIcon").innerHTML = "border_clear";
+		iconUtils.LoadIcon(document.getElementById("wallCheckboxIcon"), "wall_off");
 	}
 }
 
@@ -1588,14 +1704,14 @@ function reloadSprite() {
 		}
 
 		document.getElementById("animation").setAttribute("style","display:block;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_more";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_more");
 		renderAnimationPreview( drawing.id );
 	}
 	else {
 		paintTool.isCurDrawingAnimated = false;
 		document.getElementById("animatedCheckbox").checked = false;
 		document.getElementById("animation").setAttribute("style","display:none;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_less";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_less");
 	}
 
 	// dialog UI
@@ -1627,14 +1743,14 @@ function reloadItem() {
 		}
 
 		document.getElementById("animation").setAttribute("style","display:block;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_more";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_more");
 		renderAnimationPreview( drawing.id );
 	}
 	else {
 		paintTool.isCurDrawingAnimated = false;
 		document.getElementById("animatedCheckbox").checked = false;
 		document.getElementById("animation").setAttribute("style","display:none;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_less";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_less");
 	}
 
 	// dialog UI
@@ -1654,22 +1770,20 @@ function deleteDrawing() {
 function toggleToolBar(e) {
 	if( e.target.checked ) {
 		document.getElementById("toolsPanel").style.display = "flex";
-		document.getElementById("toolsCheckIcon").innerHTML = "expand_more";
 	}
 	else {
 		document.getElementById("toolsPanel").style.display = "none";
-		document.getElementById("toolsCheckIcon").innerHTML = "expand_less";
 	}
 }
 
 function toggleDownloadOptions(e) {
 	if( e.target.checked ) {
 		document.getElementById("downloadOptions").style.display = "block";
-		document.getElementById("downloadOptionsCheckIcon").innerHTML = "expand_more";
+		iconUtils.LoadIcon(document.getElementById("downloadOptionsCheckIcon"), "expand_more");
 	}
 	else {
 		document.getElementById("downloadOptions").style.display = "none";
-		document.getElementById("downloadOptionsCheckIcon").innerHTML = "expand_less";
+		iconUtils.LoadIcon(document.getElementById("downloadOptionsCheckIcon"), "expand_less");
 	}
 }
 
@@ -1685,6 +1799,8 @@ function on_edit_mode() {
 	roomTool.listenEditEvents();
 
 	markerTool.RefreshKeepSelection();
+
+	reloadDialogUI();
 
 	updateInventoryUI();
 
@@ -1725,7 +1841,7 @@ function on_play_mode() {
 
 function updatePlayModeButton() {
 	document.getElementById("playModeCheck").checked = isPlayMode;
-	document.getElementById("playModeIcon").innerHTML = isPlayMode ? "stop" : "play_arrow";
+	iconUtils.LoadIcon(document.getElementById("playModeIcon"), isPlayMode ? "stop" : "play");
 
 	var stopText = localization.GetStringOrFallback("stop_game", "stop");
 	var playText = localization.GetStringOrFallback("play_game", "play");
@@ -1734,7 +1850,7 @@ function updatePlayModeButton() {
 
 function updatePreviewDialogButton() {
 	document.getElementById("previewDialogCheck").checked = isPreviewDialogMode;
-	document.getElementById("previewDialogIcon").innerHTML = isPreviewDialogMode ? "stop" : "play_arrow";
+	iconUtils.LoadIcon(document.getElementById("previewDialogIcon"), isPreviewDialogMode ? "stop" : "play");
 
 	var stopText = localization.GetStringOrFallback("stop_game", "stop");
 	var previewText = localization.GetStringOrFallback("dialog_start_preview", "preview");
@@ -1743,26 +1859,32 @@ function updatePreviewDialogButton() {
 
 function togglePaintGrid(e) {
 	paintTool.drawPaintGrid = e.target.checked;
-	document.getElementById("paintGridIcon").innerHTML = paintTool.drawPaintGrid ? "visibility" : "visibility_off";
+	iconUtils.LoadIcon(document.getElementById("paintGridIcon"), paintTool.drawPaintGrid ? "visibility" : "visibility_off");
 	paintTool.updateCanvas();
+}
+
+function togglePaintGrid(e) {
+    paintTool.drawPaintGrid = e.target.checked;
+    iconUtils.LoadIcon(document.getElementById("paintGridIcon"), paintTool.drawPaintGrid ? "visibility" : "visibility_off");
+    paintTool.updateCanvas();
 }
 
 function toggleMapGrid(e) {
 	roomTool.drawMapGrid = e.target.checked;
-	document.getElementById("roomGridIcon").innerHTML = roomTool.drawMapGrid ? "visibility" : "visibility_off";
+	iconUtils.LoadIcon(document.getElementById("roomGridIcon"), roomTool.drawMapGrid ? "visibility" : "visibility_off");
 	roomTool.drawEditMap();
 }
 
 function toggleCollisionMap(e) {
 	roomTool.drawCollisionMap = e.target.checked;
-	document.getElementById("roomWallsIcon").innerHTML = roomTool.drawCollisionMap ? "visibility" : "visibility_off";
+	iconUtils.LoadIcon(document.getElementById("roomWallsIcon"), roomTool.drawCollisionMap ? "visibility" : "visibility_off");
 	roomTool.drawEditMap();
 }
 
 var showFontDataInGameData = false;
 function toggleFontDataVisibility(e) {
 	showFontDataInGameData = e.target.checked;
-	document.getElementById("fontDataIcon").innerHTML = e.target.checked ? "visibility" : "visibility_off";
+	iconUtils.LoadIcon(document.getElementById("fontDataIcon"), e.target.checked ? "visibility" : "visibility_off");
 	refreshGameData(); // maybe a bit expensive
 }
 
@@ -1830,6 +1952,10 @@ function duplicatePalette() {
 
 function deletePalette() {
 	paletteTool.DeleteSelected();
+}
+
+function addColor() {
+    paletteTool.AddColor();
 }
 
 function roomPaletteChange(event) {
@@ -2042,8 +2168,21 @@ function renderAnimationPreview(id) {
 	renderAnimationThumbnail( "animationThumbnailFrame1", id, 0 );
 	renderAnimationThumbnail( "animationThumbnailFrame2", id, 1 );
 }
+function selectColor() {
+    console.log(this);
+    var colors = getPal(paletteTool.GetSelectedId());
+    var lastIndex = colors.length - 1;
+    if (this.value === undefined || this.value === null || this.value > lastIndex) {
+        paintTool.setPaintColor(0);
+        paletteTool.changeColorPickerIndex(0);
+    } else {
+        paintTool.setPaintColor(this.value);
+        paletteTool.changeColorPickerIndex(this.value);
+    }
+}
 
 function selectPaint() {
+    console.log(this);
 	if (drawing.id === this.value) {
 		showPanel("paintPanel", "paintExplorerPanel");
 	}
@@ -2170,7 +2309,7 @@ function on_game_data_change_core() {
 			name : fontName,
 			fontdata : fontManager.GetData(fontName)
 		};
-		localStorage.custom_font = JSON.stringify(fontStorage);
+        localStorage.bitsy_color_custom_font = JSON.stringify(fontStorage);
 	}
 
 	updateInventoryUI();
@@ -2185,8 +2324,8 @@ function on_game_data_change_core() {
 
 function updateFontSelectUI() {
 	var fontStorage = null;
-	if (localStorage.custom_font != null) {
-		fontStorage = JSON.parse(localStorage.custom_font);
+    if (localStorage.bitsy_color_custom_font != null) {
+        fontStorage = JSON.parse(localStorage.bitsy_color_custom_font);
 	}
 
 	var fontSelect = document.getElementById("fontSelect");
@@ -2228,7 +2367,7 @@ function on_toggle_wall(e) {
 }
 
 function toggleWallUI(checked) {
-	document.getElementById("wallCheckboxIcon").innerHTML = checked ? "border_outer" : "border_clear";
+	iconUtils.LoadIcon(document.getElementById("wallCheckboxIcon"), checked ? "wall_on" : "wall_off");
 }
 
 function filenameFromGameTitle() {
@@ -2239,6 +2378,11 @@ function filenameFromGameTitle() {
 }
 
 function exportGame() {
+	if (isPlayMode) {
+		alert("You can't download your game while you're playing it! Sorry :(");
+		return;
+	}
+
 	refreshGameData(); //just in case
 	// var gameData = document.getElementById("game_data").value; //grab game data
 	var gameData = getFullGameData();
@@ -2277,7 +2421,7 @@ function toggleInstructions(e) {
 	else {
 		div.style.display = "none";
 	}
-	document.getElementById("instructionsCheckIcon").innerHTML = e.target.checked ? "expand_more" : "expand_less";
+	iconUtils.LoadIcon(document.getElementById("instructionsCheckIcon"), e.target.checked ? "expand_more" : "expand_less");
 }
 
 //todo abstract this function into toggleDiv
@@ -2289,7 +2433,7 @@ function toggleVersionNotes(e) {
 	else {
 		div.style.display = "none";
 	}
-	document.getElementById("versionNotesCheckIcon").innerHTML = e.target.checked ? "expand_more" : "expand_less";
+	iconUtils.LoadIcon(document.getElementById("versionNotesCheckIcon"), e.target.checked ? "expand_more" : "expand_less");
 }
 
 /* MARKERS (exits & endings) */
@@ -2378,7 +2522,7 @@ function toggleRoomMarkers(visible) {
 	roomTool.areMarkersVisible = visible;
 	roomTool.drawEditMap();
 	document.getElementById("roomMarkersCheck").checked = visible;
-	document.getElementById("roomMarkersIcon").innerHTML = visible ? "visibility" : "visibility_off";
+	iconUtils.LoadIcon(document.getElementById("roomMarkersIcon"), visible ? "visibility" : "visibility_off");
 }
 
 function onChangeExitTransitionEffect(effectId, exitIndex) {
@@ -2521,9 +2665,9 @@ function afterHidePanel(id) {
 
 // DEPRECATED
 function savePanelPref(id,visible) {
-	var prefs = localStorage.panel_prefs == null ? {} : JSON.parse( localStorage.panel_prefs );
+    var prefs = localStorage.bitsy_color_panel_prefs == null ? {} : JSON.parse(localStorage.bitsy_color_panel_prefs );
 	prefs[id] = visible;
-	localStorage.setItem( "panel_prefs", JSON.stringify(prefs) );
+    localStorage.setItem( "bitsy_color_panel_prefs", JSON.stringify(prefs) );
 }
 
 function updatePanelPrefs() {
@@ -2550,7 +2694,7 @@ function updatePanelPrefs() {
 	}
 
 	// console.log(prefs);
-	localStorage.panel_prefs = JSON.stringify( prefs );
+    localStorage.bitsy_color_panel_prefs = JSON.stringify( prefs );
 	// console.log(localStorage.panel_prefs);
 }
 
@@ -2561,6 +2705,7 @@ function startRecordingGif() {
 
 	document.getElementById("gifStartButton").style.display="none";
 	document.getElementById("gifSnapshotButton").style.display="none";
+	document.getElementById("gifSnapshotModeButton").style.display="none";
 	document.getElementById("gifStopButton").style.display="inline";
 	document.getElementById("gifRecordingText").style.display="inline";
 	document.getElementById("gifPreview").style.display="none";
@@ -2577,6 +2722,17 @@ var gifCaptureWidescreenSize = {
 	width : 726, // height * 1.26
 	height : 576
 };
+
+var isGifSnapshotLandscape = false;
+function toggleSnapshotMode() {
+	isGifSnapshotLandscape = !isGifSnapshotLandscape;
+
+	var modeDesc = isGifSnapshotLandscape ? "snapshot mode: landscape" : "snapshot mode: square";
+	document.getElementById("gifSnapshotModeButton").title = modeDesc;
+
+	var iconName = isGifSnapshotLandscape ? "pagesize_landscape" : "pagesize_full";
+	iconUtils.LoadIcon(document.getElementById("gifSnapshotModeIcon"), iconName);
+}
 
 function takeSnapshotGif(e) {
 	var gif = {
@@ -2596,7 +2752,7 @@ function takeSnapshotGif(e) {
 	drawRoom( room[curRoom], gifCaptureCtx, 1 );
 	var frame1 = gifCaptureCtx.getImageData(0,0,512,512);
 
-	if(e.altKey) {
+	if (isGifSnapshotLandscape) {
 		/* widescreen */
 		gif.width = gifCaptureWidescreenSize.width;
 		gif.height = gifCaptureWidescreenSize.height;
@@ -2643,6 +2799,7 @@ function finishRecordingGif(gif) {
 
 	document.getElementById("gifStartButton").style.display="none";
 	document.getElementById("gifSnapshotButton").style.display="none";
+	document.getElementById("gifSnapshotModeButton").style.display="none";
 	document.getElementById("gifStopButton").style.display="none";
 	document.getElementById("gifRecordingText").style.display="none";
 	document.getElementById("gifEncodingText").style.display="inline";
@@ -2656,16 +2813,11 @@ function finishRecordingGif(gif) {
 
 	setTimeout( function() {
 		var hexPalette = [];
+
 		// add black & white
 		hexPalette.push( rgbToHex(0,0,0).slice(1) ); // need to slice off leading # (should that safeguard go in gif.js?)
 		hexPalette.push( rgbToHex(255,255,255).slice(1) );
-		// add all user defined palette colors
-		for (id in palette) {
-			for (i in getPal(id)){
-				var hexStr = rgbToHex( getPal(id)[i][0], getPal(id)[i][1], getPal(id)[i][2] ).slice(1);
-				hexPalette.push( hexStr );
-			}
-		}
+
 		// add rainbow colors (for rainbow text effect)
 		hexPalette.push( hslToHex(0.0,1,0.5).slice(1) );
 		hexPalette.push( hslToHex(0.1,1,0.5).slice(1) );
@@ -2678,6 +2830,20 @@ function finishRecordingGif(gif) {
 		hexPalette.push( hslToHex(0.8,1,0.5).slice(1) );
 		hexPalette.push( hslToHex(0.9,1,0.5).slice(1) );
 
+		// add all user defined palette colors
+		for (id in palette) {
+			for (i in getPal(id)){
+				var hexStr = rgbToHex( getPal(id)[i][0], getPal(id)[i][1], getPal(id)[i][2] ).slice(1);
+
+				// gif palettes max out at 256 colors
+				// this avoids totally breaking the gif if a game has more colors than that
+				// TODO : make this smarter by keeping track palettes of visited rooms
+				if (hexPalette.length < 256) {
+					hexPalette.push( hexStr );
+				}
+			}
+		}
+
 		gif.palette = hexPalette; // hacky
 
 		gifencoder.encode( gif, 
@@ -2688,6 +2854,7 @@ function finishRecordingGif(gif) {
 				document.getElementById("gifPreview").style.display="block";
 				document.getElementById("gifPlaceholder").style.display="none";
 				document.getElementById("gifSnapshotButton").style.display="inline";
+				document.getElementById("gifSnapshotModeButton").style.display="inline";
 
 				if( browserFeatures.blobURL ) {
 					document.getElementById("gifDownload").href = makeURL.createObjectURL( blob );
@@ -2706,9 +2873,12 @@ function finishRecordingGif(gif) {
 
 /* LOAD FROM FILE */
 function importGameFromFile(e) {
-	resetGameData();
+	if (isPlayMode) {
+		alert("You can't upload a game while you're playing one! Sorry :(");
+		return;
+	}
 
-	console.log("IMPORT START");
+	resetGameData();
 
 	// load file chosen by user
 	var files = e.target.files;
@@ -2718,13 +2888,10 @@ function importGameFromFile(e) {
 
 	reader.onloadend = function() {
 		var fileText = reader.result;
-		gameDataStr = exporter.importGame( fileText );
+        gameDataStr = exporter.importGame(fileText);
 
-		console.log("import load end");
-		// console.log(gameDataStr);
-		
 		// change game data & reload everything
-		document.getElementById("game_data").value = gameDataStr;
+        document.getElementById("game_data").value = gameDataStr;
 		on_game_data_change();
 
 		paintExplorer.Refresh(drawing.type);
@@ -2751,7 +2918,7 @@ function importFontFromFile(e) {
 			name : customFontName,
 			fontdata : fileText
 		};
-		localStorage.custom_font = JSON.stringify(fontStorage);
+        localStorage.bitsy_color_custom_font = JSON.stringify(fontStorage);
 
 		refreshGameData();
 		updateFontSelectUI();
@@ -2778,7 +2945,7 @@ function on_toggle_animated() {
 			addItemAnimation();
 		}
 		document.getElementById("animation").setAttribute("style","display:block;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_more";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_more");
 		console.log(drawing.id);
 		renderAnimationPreview( drawing.id );
 	}
@@ -2794,7 +2961,7 @@ function on_toggle_animated() {
 			removeItemAnimation();
 		}
 		document.getElementById("animation").setAttribute("style","display:none;");
-		document.getElementById("animatedCheckboxIcon").innerHTML = "expand_less";
+		iconUtils.LoadIcon(document.getElementById("animatedCheckboxIcon"), "expand_less");
 	}
 	renderPaintThumbnail( drawing.id );
 }
@@ -2964,6 +3131,7 @@ function addNewFrameToDrawing(drwId) {
 	var imageSource = renderer.GetImageSource(drwId);
 	var firstFrame = imageSource[0];
 	var newFrame = [];
+	var tilesize = firstFrame.length;
 	for (var y = 0; y < tilesize; y++) {
 		newFrame.push([]);
 		for (var x = 0; x < tilesize; x++) {
@@ -3017,7 +3185,7 @@ function on_change_color_page() {
 	document.getElementById("roomPanel").style.background = hex;
 	export_settings.page_color = hex;
 
-	localStorage.export_settings = JSON.stringify( export_settings );
+	localStorage.bitsy_color_export_settings = JSON.stringify( export_settings );
 }
 
 function getComplimentingColor(palId) {
@@ -3372,8 +3540,8 @@ function on_change_font(e) {
 		switchFont(e.target.value, true /*doPickTextDirection*/);
 	}
 	else {
-		if (localStorage.custom_font != null) {
-			var fontStorage = JSON.parse(localStorage.custom_font);
+        if (localStorage.bitsy_color_custom_font != null) {
+            var fontStorage = JSON.parse(localStorage.bitsy_color_custom_font);
 			switchFont(fontStorage.name, true /*doPickTextDirection*/);
 		}
 		else {
@@ -3543,3 +3711,6 @@ function showFontMissingCharacterWarning() {
 function hideFontMissingCharacterWarning() {
 	document.getElementById("fontMissingCharacter").style.display = "none";
 }
+
+/* ICONS */
+var iconUtils = new IconUtils(); // TODO : move?

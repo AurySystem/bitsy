@@ -85,47 +85,62 @@ function renderImage(drawing, paletteId, flat) {
 
 function imageDataFromImageSource(imageSource, pal, col, transparent) {
 	//console.log(imageSource);
+
     //defualt to transparent
     if (transparent == null || transparent == undefined) {
         transparent = 1; 
     }
 
+    var tilesize = imageSource.length;
+    var scale = Math.ceil(4 / (tilesize / 8));
+
 	var img = context.createImageData(tilesize*scale,tilesize*scale);
 
-	var backgroundColor = getPaletteColor(pal,0);
-	var foregroundColor = getPaletteColor(pal,col);
+    var foregroundColor = { r:255, g:255, b:255};
+    if (!isNaN(parseInt(col))) {
+        foregroundColor = getPaletteColor(pal, col);
+    } else if (typeof col == 'string' && col != 'NaN') {
+        foregroundColor = hexToRgb(col);
+    }
+        
+    //take 2 on grabbing an array of the palette
+
+    if (palettes[pal] === undefined) {
+        pal = "default";
+    }
+    var colors = palettes[pal].colors;
 
 	for (var y = 0; y < tilesize; y++) {
 		for (var x = 0; x < tilesize; x++) {
 			var px = imageSource[y][x];
 			for (var sy = 0; sy < scale; sy++) {
 				for (var sx = 0; sx < scale; sx++) {
-					var pxl = (((y * scale) + sy) * tilesize * scale * 4) + (((x*scale) + sx) * 4);
-                    if (px === 1) {
+                    var pxl = (((y * scale) + sy) * tilesize * scale * 4) + (((x * scale) + sx) * 4);
+
+                    if (px == 1) {
                         img.data[pxl + 0] = foregroundColor.r;
                         img.data[pxl + 1] = foregroundColor.g;
                         img.data[pxl + 2] = foregroundColor.b;
                         img.data[pxl + 3] = 255;
                     }
                     else { //ch === 0
-                        img.data[pxl + 0] = backgroundColor.r;
-                        img.data[pxl + 1] = backgroundColor.g;
-                        img.data[pxl + 2] = backgroundColor.b;
-                        if (transparent == 0) {
-                            img.data[pxl + 3] = 255;
+                        if (colors[px] == undefined || px >= colors.length || isNaN(parseInt(px))) {
+                            console.log('passed index out of palette range: ' + px);
+                            px = 0;
                         }
-                        else {
-                            img.data[pxl + 3] = 0;
+                        img.data[pxl + 0] = colors[px][0];//r
+                        img.data[pxl + 1] = colors[px][1];//g
+                        img.data[pxl + 2] = colors[px][2];//b
+                        img.data[pxl + 3] = 255;//a
+                        if (px == 0) {
+                            if (transparent == 0) {
+                                img.data[pxl + 3] = 255;
+                            }
+                            else {
+                                img.data[pxl + 3] = 0;
+                            }
                         }
-                    
-						if (px != 0) {
-							var testColor = getPaletteColor(pal, px); //feels kinda hacky we'd much prefer to get it pull it's color from an array with the pallete's colors popped in... but we can't get that to work
-							img.data[pxl + 0] = testColor.r;
-							img.data[pxl + 1] = testColor.g;
-							img.data[pxl + 2] = testColor.b;
-							img.data[pxl + 3] = 255;
-						}
-					}
+                    }
 				}
 			}
 		}

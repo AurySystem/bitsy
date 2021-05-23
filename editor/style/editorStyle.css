@@ -180,6 +180,11 @@ input {
 	border-radius: 2px;
 }
 
+span.controlBox {
+	padding: 3px;
+	margin-bottom: 0px;
+}
+
 .controlBox .material-icons {
 	font-size: 110%;
 	vertical-align: middle;
@@ -360,6 +365,19 @@ input {
 	/*background: red;*/
 }
 
+#paintMirror {
+    white-space: initial;
+    padding: none;
+    margin: none;
+    /*background: red;*/
+}
+#paintTransform {
+    white-space: initial;
+    padding: none;
+    margin: none;
+    /*background: red;*/
+}
+
 #paintModeRadio {
 	display: flex;
 }
@@ -383,6 +401,11 @@ input {
 #paintPanel .buttonGroup {
 	padding: 0px;
 	margin: 0px;
+}
+
+#paintPanel .noSpace {
+    margin-right: 0px;
+    margin-left: 0px;
 }
 
 #dialogCodeText {

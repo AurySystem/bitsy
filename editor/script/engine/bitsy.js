@@ -64,7 +64,7 @@ var spriteStartLocations = {};
 /* VERSION */
 var version = {
 	major: 7, // major changes
-	minor: 0, // smaller changes
+	minor: 2, // smaller changes
 	devBuildPhase: "RELEASE",
 };
 function getEngineVersion() {
@@ -149,12 +149,6 @@ var key = {
 
 var prevTime = 0;
 var deltaTime = 0;
-
-//methods used to trigger gif recording
-var didPlayerMoveThisFrame = false;
-var onPlayerMoved = null;
-// var didDialogUpdateThisFrame = false;
-var onDialogUpdate = null;
 
 //inventory update UI handles
 var onInventoryChanged = null;
@@ -555,17 +549,6 @@ function update() {
 	}
 
 	prevTime = curTime;
-
-	//for gif recording
-	if (didPlayerMoveThisFrame && onPlayerMoved != null) {
-		onPlayerMoved();
-	}
-	didPlayerMoveThisFrame = false;
-
-	/* hacky replacement */
-	if (onDialogUpdate != null) {
-		dialogRenderer.SetPageFinishHandler( onDialogUpdate );
-	}
 
 	input.resetKeyPressed();
 	input.resetTapReleased();
@@ -1050,14 +1033,9 @@ function movePlayer(direction) {
         }
     }
 
-    //var ext = getExit(player().room, player().x, player().y);
-    //var end = getEnding(player().room, player().x, player().y);
-    var ext = getExit(player().room, player().x, player().y );
-    var end = getEnding(player().room, player().x, player().y );
-	// TODO : vNext
-    // var eff = getEffect( player().room, player().x, player().y );
-    //var itmIndex = getItemIndex(player().room, player().x, player().y);
-    var itmIndex = getItemIndex(player().room, player().x, player().y );
+	var ext = getExit( player().room, player().x, player().y );
+	var end = getEnding( player().room, player().x, player().y );
+	var itmIndex = getItemIndex( player().room, player().x, player().y );
 
 	// do items first, because you can pick up an item AND go through a door
 	if (itmIndex > -1) {
@@ -1393,15 +1371,15 @@ function parseWorld(file) {
 			}
 
 			//skip blank lines & comments
-			i++;
-		}
-		else if (getType(curLine) == "PAL") {
+            i++;
+        }
+        else if (getType(curLine) == "PAL") {
 			i = parsePalette(lines, i);
 		}
-		else if (getType(curLine) === "ROOM" || getType(curLine) === "SET") { //SET for back compat
+       else if (getType(curLine) === "ROOM" || getType(curLine) === "SET") { //SET for back compat
 			i = parseRoom(lines, i, compatibilityFlags);
 		}
-		else if (getType(curLine) === "TIL") {
+       else if (getType(curLine) === "TIL") {
 			i = parseTile(lines, i);
 		}
 		else if (getType(curLine) === "SPR") {
@@ -1435,7 +1413,7 @@ function parseWorld(file) {
 		else if (getType(curLine) === "!") {
 			i = parseFlag(lines, i);
 		}
-		else {
+        else {
 			i++;
 		}
 	}
@@ -1453,7 +1431,7 @@ function parseWorld(file) {
 	}
 	else {
 		// uh oh there are no rooms I guess???
-		curRoom = null;
+        curRoom = null;
 	}
 
 	if (curRoom != null) {
@@ -1639,7 +1617,7 @@ function serializeWorld(skipFonts) {
 			/* WALL */
 			worldStr += "WAL " + tile[id].isWall + "\n";
 		}
-		if (tile[id].col != null && tile[id].col != undefined && tile[id].col != 1) {
+		if (tile[id].col != null && tile[id].col != undefined) {
 			/* COLOR OVERRIDE */
 			worldStr += "COL " + tile[id].col + "\n";
 		}
@@ -1665,7 +1643,7 @@ function serializeWorld(skipFonts) {
 				worldStr += "ITM " + itemId + " " + sprite[id].inventory[itemId] + "\n";
 			}
 		}
-		if (sprite[id].col != null && sprite[id].col != undefined && sprite[id].col != 2) {
+		if (sprite[id].col != null && sprite[id].col != undefined) {
 			/* COLOR OVERRIDE */
 			worldStr += "COL " + sprite[id].col + "\n";
 		}
@@ -1682,7 +1660,7 @@ function serializeWorld(skipFonts) {
 		if (item[id].dlg != null) {
 			worldStr += "DLG " + item[id].dlg + "\n";
 		}
-		if (item[id].col != null && item[id].col != undefined && item[id].col != 2) {
+		if (item[id].col != null && item[id].col != undefined) {
 			/* COLOR OVERRIDE */
 			worldStr += "COL " + item[id].col + "\n";
 		}
@@ -1978,7 +1956,7 @@ function parseTile(lines, i) {
 	else {
 		// store tile source
 		drwId = "TIL_" + id;
-		i = parseDrawingCore( lines, i, drwId );
+        i = parseDrawingCore(lines, i, drwId);
 	}
 
 	//other properties
@@ -1987,7 +1965,10 @@ function parseTile(lines, i) {
     var physics = null;
 	while (i < lines.length && lines[i].length > 0) { //look for empty line
 		if (getType(lines[i]) === "COL") {
-			colorIndex = parseInt( getId(lines[i]) );
+            colorIndex = parseInt(getId(lines[i]));
+            if (isNaN(colorIndex)) {
+                colorIndex = getId(lines[i]);
+            }
 		}
 		else if (getType(lines[i]) === "NAME") {
 			/* NAME */
@@ -2045,13 +2026,16 @@ function parseSprite(lines, i) {
 	}
 
 	//other properties
-	var colorIndex = 2; //default palette color index is 2
+	var colorIndex = 1; //default palette color index is 1
 	var dialogId = null;
 	var startingInventory = {};
 	while (i < lines.length && lines[i].length > 0) { //look for empty line
 		if (getType(lines[i]) === "COL") {
 			/* COLOR OFFSET INDEX */
-			colorIndex = parseInt( getId(lines[i]) );
+            colorIndex = parseInt(getId(lines[i]));
+            if (isNaN(colorIndex)) {
+                colorIndex = getId(lines[i]);
+            }
 		}
 		else if (getType(lines[i]) === "POS") {
 			/* STARTING POSITION */
@@ -2119,12 +2103,15 @@ function parseItem(lines, i) {
 	}
 
 	//other properties
-	var colorIndex = 2; //default palette color index is 2
+	var colorIndex = 1; //default palette color index is 1
 	var dialogId = null;
 	while (i < lines.length && lines[i].length > 0) { //look for empty line
 		if (getType(lines[i]) === "COL") {
 			/* COLOR OFFSET INDEX */
-			colorIndex = parseInt( getArg( lines[i], 1 ) );
+            colorIndex = parseInt(getArg(lines[i], 1));
+            if (isNaN(colorIndex)) {
+                colorIndex = getId(lines[i]);
+            }
 		}
 		// else if (getType(lines[i]) === "POS") {
 		// 	/* STARTING POSITION */
@@ -2178,65 +2165,60 @@ function parseDrawing(lines, i) {
 }
 
 function parseDrawingCore(lines, i, drwId) {
+    var frameIndex = 0;
+    var frameListStrings = [];
+    frameListStrings.push([]);
+
+    while (!isNaN(parseInt(lines[i].charAt(0))) || lines[i].charAt(0) === ">" || lines[i].charAt(0) === ",") {
+        if ( lines[i].charAt(0) === ">") {
+            frameListStrings.push([]);
+            frameIndex++;
+        } else {
+            frameListStrings[frameIndex].push(lines[i]);
+        }
+        i++;
+    }
+
+    // interpret drawing size as a number of lines in the first frame
+    var drawingSize = frameListStrings[0].length;
+
+    var framesParsed = [];
+
+    // parse drawing data
     if (flags.DRAW_FORMAT == 1) {
-        var frameList = []; //init list of frames
-        frameList.push([]); //init first frame
-        var frameIndex = 0;
-        var y = 0;
-        while (y < tilesize) {
-            var l = lines[i + y];
-            var row = [];
-            var lineSep = l.split(",");
-            for (x = 0; x < tilesize; x++) {
-                row.push(parseInt(lineSep[x]));
-            }
-            frameList[frameIndex].push(row);
-            y++;
-
-            if (y === tilesize) {
-                i = i + y;
-                if (lines[i] != undefined && lines[i].charAt(0) === ">") {
-                    // start next frame!
-                    frameList.push([]);
-                    frameIndex++;
-                    //start the count over again for the next frame
-                    i++;
-                    y = 0;
+        frameListStrings.forEach(function (frame, frameIndex) {
+            framesParsed[frameIndex] = [];
+            for (y = 0; y < drawingSize; y++) {
+                var line = frame[y] || '';
+                var lineSep = line.split(",");
+                framesParsed[frameIndex][y] = [];
+                for (x = 0; x < drawingSize; x++) {
+                    var parsedPixel = parseInt(lineSep[x]);
+                    parsedPixel = isNaN(parsedPixel) ? 0 : parsedPixel;
+                    framesParsed[frameIndex][y].push(parsedPixel);
                 }
             }
-        }
-    }
-    else {
-        var frameList = []; //init list of frames
-        frameList.push([]); //init first frame
-        var frameIndex = 0;
-        var y = 0;
-        while (y < tilesize) {
-            var l = lines[i + y];
-            var row = [];
-            for (x = 0; x < tilesize; x++) {
-                row.push(parseInt(l.charAt(x)));
-            }
-            frameList[frameIndex].push(row);
-            y++;
-
-            if (y === tilesize) {
-                i = i + y;
-                if (lines[i] != undefined && lines[i].charAt(0) === ">") {
-                    // start next frame!
-                    frameList.push([]);
-                    frameIndex++;
-                    //start the count over again for the next frame
-                    i++;
-                    y = 0;
+        });
+    } else {
+        frameListStrings.forEach(function (frame, frameIndex) {
+            framesParsed[frameIndex] = [];
+            for (y = 0; y < drawingSize; y++) {
+                var line = frame[y] || '';
+                var lineSep = line.split(",");
+                framesParsed[frameIndex][y] = [];
+                for (x = 0; x < drawingSize; x++) {
+                    var parsedPixel = parseInt(line.charAt(x));
+                    parsedPixel = isNaN(parsedPixel) ? 0 : parsedPixel;
+                    framesParsed[frameIndex][y].push(parsedPixel);
                 }
             }
-        }
+        });
     }
 
-	renderer.SetImageSource(drwId, frameList);
 
-	return i;
+    renderer.SetImageSource(drwId, framesParsed);
+
+    return i;
 }
 
 function parseScript(lines, i, backCompatPrefix, compatibilityFlags) {
@@ -2467,6 +2449,7 @@ var dialogRenderer = dialogModule.CreateRenderer();
 var dialogBuffer = dialogModule.CreateBuffer();
 var fontManager = new FontManager();
 
+// TODO : is this scriptResult thing being used anywhere???
 function onExitDialog(scriptResult, dialogCallback) {
 	console.log("EXIT DIALOG!");
 
@@ -2551,7 +2534,7 @@ function startDialog(dialogStr, scriptId, dialogCallback, objectContext) {
 	// console.log("START DIALOG ");
 	if (dialogStr.length <= 0) {
 		// console.log("ON EXIT DIALOG -- startDialog 1");
-		onExitDialog(dialogCallback);
+		onExitDialog(null, dialogCallback);
 		return;
 	}
 
