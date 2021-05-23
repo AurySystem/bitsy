@@ -478,8 +478,10 @@ function update() {
                 jumpTimer = 0;
             }
             if (jumpTimer == 0) {
+                prevDirection = curPlayerDirection;
                 curPlayerDirection = Direction.None;
                 movePlayer(Direction.Up);
+                curPlayerDirection = prevDirection;
                 jumpTimer = -1;
                 gravTimer = 320;
             }
@@ -493,14 +495,18 @@ function update() {
                 extraMoveTimer = 0;
             }
             if (extraMoveTimer == 0 && extraMoveAmount != 0) {
+                prevDirection = curPlayerDirection;
                 curPlayerDirection = Direction.None;
                 movePlayer(extraMoveDirection);
+                curPlayerDirection = prevDirection;
                 extraMoveTimer = 30;
                 extraMoveAmount -= 1;
             }
             if (extraMoveTimer == 0 && extraMoveAmount == 0) {
+                prevDirection = curPlayerDirection;
                 curPlayerDirection = Direction.None;
                 movePlayer(extraMoveDirection);
+                curPlayerDirection = prevDirection;
                 extraMoveTimer = -1;
                 gravTimer = 320;
             }
@@ -521,8 +527,10 @@ function update() {
                     gravTimer = 0;
                 }
                 if (gravTimer == 0) {
+                    prevDirection = curPlayerDirection;
                     curPlayerDirection = Direction.None;
                     movePlayer(gravDirection);
+                    curPlayerDirection = prevDirection;
                     gravTimer = 90;
                 }
             }
@@ -536,6 +544,9 @@ function update() {
 
 				if( playerHoldToMoveTimer <= 0 )
                 {
+                    if (curPlayerDirection == Direction.Up && (isWallAtSide(Direction.Down, 1) || (physTypeAt(Direction.None) == 0 && physTypeAt(gravDirection, 1) != 0))) {
+                        jumpTimer = 90;
+                    }
                     movePlayer(curPlayerDirection);
                     playerHoldToMoveTimer = 150;
 				}
@@ -622,7 +633,7 @@ function updateInput() {
                 jumpTimer = 90;
             }
             movePlayer(curPlayerDirection);
-            playerHoldToMoveTimer = 500;
+            playerHoldToMoveTimer = 300;
         }
 
         if ((input.isKeyDown(key.left) || input.isKeyDown(key.a) || input.swipeLeft()) && curPlayerDirection != Direction.Left && horizontal == false) {
@@ -646,7 +657,7 @@ function updateInput() {
                 jumpTimer = 90;
             }
             movePlayer(secPlayerDirection);
-            playerHoldToMoveTimer = 500;
+            playerHoldToMoveTimer = 300;
         }
 
         //check the input chain for current direction, no direction, current direction
@@ -682,7 +693,7 @@ function inputChainHelper() {
                 inputChain.length = 0;
             }
             inputChain.push(curPlayerDirection);
-            console.log(inputChain.toString());
+            //console.log(inputChain.toString());
         }
         if (inputChain.length >= 3) {
             clearTimer = 0;
@@ -991,6 +1002,14 @@ function pMoveDirection(direction, move) {
     if (direction == Direction.Down) { player().y += move; }
 }
 
+function triarea(p1, p2, p3) {
+    return Math.abs(p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2;
+}
+
+function inTri(p1, p2, p3, pt) {
+    return (triarea(p1, p2, pt) + triarea(p2, p3, pt) + triarea(p3, p1, pt) == triarea(p1, p2, p3))
+}
+
 function movePlayer(direction) {
 	if (player().room == null || !Object.keys(room).includes(player().room)) {
 		return; // player room is missing or invalid.. can't move them!
@@ -1001,19 +1020,23 @@ function movePlayer(direction) {
     //test sub-tile movements don't use in commits, move two pixels every frame
     //removed most of subtile test will have to redo for full gridless movement when gravity is in scope, eg after a new version of this
     //made useable in commits
+
     if (direction == curPlayerDirection || direction == secPlayerDirection) {
         var pMove = (8 / 8);
         if (!(spr = getSpriteAtSide(direction, pMove)) && !isWallAtSide(direction, pMove)) {
             if (direction == Direction.Up) {
                 if (physTypeAt(Direction.None) == 1) {
                     pMoveDirection(direction, pMove);
+                    console.log("move no jump, phys")
                 }
                 else if (isWallAtSide(Direction.Down, pMove) || physTypeAt(Direction.Down,pMove) == 1) {
                     pMoveDirection(direction, pMove);
+                    console.log("move jump")
                 }
             }
             else {
                 pMoveDirection(direction, pMove);
+                console.log("move no jump, side to side/down")
             }
             didPlayerMoveThisFrame = true;
         }
@@ -1021,6 +1044,7 @@ function movePlayer(direction) {
     else {
         var pMove = (8 / 8);
         if (!(spr = getSpriteAtSide(direction, pMove)) && !isWallAtSide(direction, pMove)) {
+            console.log("move no jump check")
             pMoveDirection(direction, pMove);
             didPlayerMoveThisFrame = true;
         }
