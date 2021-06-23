@@ -978,19 +978,64 @@ var InputManager = function() {
 }
 var input = null;
 
+var collisionManager = function() {
+
+    function triarea(p1, p2, p3) {
+        return Math.abs(p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2;
+    }
+
+    function quadarea(p1, p2, p3, p4) {
+        return triarea(p1, p2, p3) + triarea(p1, p4, p3);
+    }
+
+    function inQuad(p1, p2, p3, p4, pt) {
+        return (triarea(p1, p2, pt) + triarea(p2, p3, pt) + triarea(p3, p4, pt) + triarea(p4, p1, pt) == quadarea(p1, p2, p3, p4))
+    }
+
+    function inTri(p1, p2, p3, pt) {
+        return (triarea(p1, p2, pt) + triarea(p2, p3, pt) + triarea(p3, p1, pt) == triarea(p1, p2, p3))
+    }
+
+    this.MovementCheck = function (velocity, curpos) {
+
+    }
+        
+    function physType(x, y, roomId) {
+        if (roomId == undefined || roomId == null)
+            roomId = curRoom;
+        if (x < 0 || x > 15 || y < 0 || y > 15) {
+            return 0; //invaild tile return no physics
+        }
+        else {
+
+            var tileId = getTile(x, y);
+
+            if (tileId === '0')
+                return 0; // Blank spaces have gravity
+
+            if (tile[tileId].physics === undefined || tile[tileId].physics === null) {
+                // No physics defined defualt to gravitty
+                return 0;
+            }
+        }
+        // Otherwise, use the tile's own wall-state
+        return tile[tileId].physics;
+    }
+
+    function getCollibables(x, y) {
+        var t = getRoom();
+        return t.objects[y][x];
+    }
+
+}
+var colide = null;
+
+
 function pMoveDirection(direction, move) {
     if (direction == Direction.Left) { player().x -= move; }
     if (direction == Direction.Right) { player().x += move; }
     if (direction == Direction.Up) { player().y -= move; }
     if (direction == Direction.Down) { player().y += move; }
-}
-
-function triarea(p1, p2, p3) {
-    return Math.abs(p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2;
-}
-
-function inTri(p1, p2, p3, pt) {
-    return (triarea(p1, p2, pt) + triarea(p2, p3, pt) + triarea(p3, p1, pt) == triarea(p1, p2, p3))
 }
 
 function movePlayer(direction) {
@@ -1765,9 +1810,16 @@ function parseRoom(lines, i, compatibilityFlags) {
 		endings : [],
 		items : [],
 		pal : null,
-		name : null
+        name: null,
+		objects: []
 	};
-	i++;
+    i++;
+    for (y = 0; y < mapsize; y++) {
+        room[id].objects[y] = [];
+        for (x = 0; x < mapsize; x++) {
+            room[id].objects[y][x] = [];
+        }
+    }
 
 	// create tile map
 	if ( flags.ROOM_FORMAT == 0 ) {
@@ -1777,7 +1829,8 @@ function parseRoom(lines, i, compatibilityFlags) {
 		for (; i<end; i++) {
 			room[id].tilemap.push( [] );
 			for (x = 0; x<mapsize; x++) {
-				room[id].tilemap[y].push( lines[i].charAt(x) );
+                room[id].tilemap[y].push(lines[i].charAt(x));
+                room[id].objects[y][x].push({})
 			}
 			y++;
 		}
@@ -1790,7 +1843,8 @@ function parseRoom(lines, i, compatibilityFlags) {
 			room[id].tilemap.push( [] );
             var lineSep = lines[i].split(",");
 			for (x = 0; x<mapsize; x++) {
-				room[id].tilemap[y].push( lineSep[x] );
+                room[id].tilemap[y].push(lineSep[x]);
+                room[id].objects[y][x].push({})
 			}
 			y++;
 		}
@@ -1808,7 +1862,8 @@ function parseRoom(lines, i, compatibilityFlags) {
 					room : id,
 					x : parseInt(sprCoord[0]),
 					y : parseInt(sprCoord[1])
-				};
+                };
+                room[id].objects[y][x].push({})
 			}
 			else if ( flags.ROOM_FORMAT == 0 ) { // TODO: right now this shortcut only works w/ the old comma separate format
 				/* PLACE MULTIPLE SPRITES*/ 
@@ -1824,7 +1879,8 @@ function parseRoom(lines, i, compatibilityFlags) {
 								room : id,
 								x : parseInt(col),
 								y : parseInt(row)
-							};
+                            };
+                            room[id].objects[y][x].push({})
 						}
 					}
 				}
@@ -1838,7 +1894,8 @@ function parseRoom(lines, i, compatibilityFlags) {
 				x : parseInt(itmCoord[0]),
 				y : parseInt(itmCoord[1])
 			};
-			room[id].items.push( itm );
+            room[id].items.push(itm);
+            room[id].objects[itm.y][itm.x].push({})
 		}
 		else if (getType(lines[i]) === "WAL") {
 			/* DEFINE COLLISIONS (WALLS) */
