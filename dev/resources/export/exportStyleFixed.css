@@ -8,10 +8,14 @@ body {
 }
 
 #game {
-	background:black;
-	margin: 0 auto;
-	margin-top: 40px;
-	display: block;
-	width:@@Z;
-	height:@@Z;
+    background: black;
+    margin: 0 auto;
+    margin-top: 40px;
+    display: block;
+    width: @@Z;
+    height: @@Z;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }

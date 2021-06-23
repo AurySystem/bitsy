@@ -11,9 +11,13 @@ body {
 }
 
 #game {
-	background:black;
-	width:100vw;
-	max-width:100vh;
-	margin:auto;
-	display:block;
+    background: black;
+    width: 100vw;
+    max-width: 100vh;
+    margin: auto;
+    display: block;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }

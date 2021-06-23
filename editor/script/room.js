@@ -23,9 +23,10 @@ function RoomTool(canvas) {
 	var isDragDeletingTiles = false;
 
 	// render flags
-	this.drawMapGrid = true;
 	this.drawCollisionMap = false;
 	this.areMarkersVisible = false;
+	this.drawMapGrid = (getPanelSetting("roomPanel", "grid") != false);
+	updateRoomGridCheck(this.drawMapGrid);
 
 	this.markers = null;
 
@@ -199,16 +200,18 @@ function RoomTool(canvas) {
 
 	function onTouchStart(e) {
 		e.preventDefault();
-		// console.log(e.touches[0]);
-		var fakeEvent = { target:e.target, clientX:e.touches[0].clientX, clientY:e.touches[0].clientY };
-		// console.log(fakeEvent);
-		onMouseDown( fakeEvent );
+		// update event to translate from touch-style to mouse-style structure
+		e.clientX = e.touches[0].clientX;
+		e.clientY = e.touches[0].clientY;
+		onMouseDown( e );
 	}
 
 	function onTouchMove(e) {
 		e.preventDefault();
-		var fakeEvent = { target:e.target, clientX:e.touches[0].clientX, clientY:e.touches[0].clientY };
-		onMouseMove( fakeEvent );
+		// update event to translate from touch-style to mouse-style structure
+		e.clientX = e.touches[0].clientX;
+		e.clientY = e.touches[0].clientY;
+		onMouseMove( e );
 	}
 
 	function onTouchEnd(e) {

@@ -482,6 +482,8 @@ function openDialogTool(dialogId, insertNextToId, showIfHidden) { // todo : rena
 		console.log("insert next to : " + insertNextToId);
 		showPanel("dialogPanel", insertNextToId);
 	}
+
+	events.Raise("select_dialog", { id: curDialogEditorId });
 }
 
 // TODO : probably this should be incorporated into the dialog editor main code somehow
@@ -569,7 +571,7 @@ function addNewDialog() {
 function duplicateDialog() {
 	if (curDialogEditorId != null) {
 		var id = nextAvailableDialogId();
-		dialog[id] = { src:dialog[curDialogEditorId].slice(), name:null };
+		dialog[id] = { src: dialog[curDialogEditorId].src.slice(), name: null, id: id, };
 		refreshGameData();
 
 		openDialogTool(id);
@@ -674,7 +676,7 @@ function setDefaultGameState() {
 	var defaultData = Resources["defaultGameData.bitsy"];
 	// console.log("DEFAULT DATA \n" + defaultData);
 	document.getElementById("game_data").value = defaultData;
-	localStorage.bitsy_color_game_data = document.getElementById("game_data").value; // save game
+	Store.set('game_data', document.getElementById("game_data").value); // save game
 	clearGameData();
 	parseWorld(document.getElementById("game_data").value); // load game
 
@@ -744,9 +746,11 @@ function refreshGameData() {
 	var gameDataNoFonts = serializeWorld(true);
 	document.getElementById("game_data").value = showFontDataInGameData ? serializeWorld() : gameDataNoFonts;
 
-	// localStorage.setItem("game_data", gameData); //auto-save
+	// Store.set("game_data", gameData); //auto-save
 
-    localStorage.setItem("bitsy_color_game_data", gameDataNoFonts);
+	Store.set("game_data", gameDataNoFonts);
+
+	events.Raise("game_data_refresh");
 }
 
 /* TIMER */
@@ -872,22 +876,21 @@ var defaultPanelPrefs = {
 		{ id:"gifPanel", 			visible:false, 	position:5  },
 		{ id:"dataPanel", 			visible:false, 	position:6  },
 		{ id:"exitsPanel", 			visible:false, 	position:7  },
-		{ id:"paintExplorerPanel",	visible:false,	position:9  },
-		{ id:"dialogPanel",			visible:false,	position:10 },
-		{ id:"inventoryPanel",		visible:false,	position:11 },
-		{ id:"settingsPanel",		visible:false,	position:12 },
+		{ id:"dialogPanel",			visible:false,	position:8 },
+		{ id:"findPanel",			visible:false,	position:9  },
+		{ id:"inventoryPanel",		visible:false,	position:10 },
+		{ id:"settingsPanel",		visible:false,	position:11 },
 	]
 };
 // console.log(defaultPanelPrefs);
 
 function getPanelPrefs() {
 	// (TODO: weird that engine version and editor version are the same??)
-	var useDefaultPrefs = ( localStorage.engine_version == null ) ||
-                            (localStorage.bitsy_color_panel_prefs == null ) ||
-							( JSON.parse(localStorage.engine_version).major < 6 ) ||
-							( JSON.parse(localStorage.engine_version).minor < 0 );
-
-	var prefs = useDefaultPrefs ? defaultPanelPrefs : JSON.parse( localStorage.bitsy_color_panel_prefs );
+	var storedEngineVersion = Store.get('engine_version');
+	var useDefaultPrefs = (!storedEngineVersion) ||
+	                      (storedEngineVersion.major < 6) ||
+	                      (storedEngineVersion.minor < 0);
+	var prefs = useDefaultPrefs ? defaultPanelPrefs : Store.get('panel_prefs', defaultPanelPrefs);
 
 	// add missing panel prefs (if any)
 	// console.log(defaultPanelPrefs);
@@ -972,10 +975,11 @@ function start() {
 	}
 
 	// localization
-	if (urlFlags["lang"] != null) {
-		localStorage.editor_language = urlFlags["lang"]; // need to verify this is real language?
-	}
-	localization = new Localization();
+	localization = new Localization(urlFlags["lang"]);
+	Store.init(function () {
+		// TODO: localize
+		window.alert('A storage error occurred: The editor will continue to work, but data may not be saved/loaded. Make sure to export a local copy after making changes, or your gamedata may be lost!');
+	});
 
 	//game canvas & context (also the map editor)
 	attachCanvas( document.getElementById("game") );
@@ -1004,17 +1008,18 @@ function start() {
 	drawingThumbnailCtx = drawingThumbnailCanvas.getContext("2d");
 
 	// load custom font
-    if (localStorage.bitsy_color_custom_font != null) {
-		var fontStorage = JSON.parse(localStorage.bitsy_color_custom_font);
+	var fontStorage = Store.get('custom_font');
+	if (fontStorage) {
 		fontManager.AddResource(fontStorage.name + ".bitsyfont", fontStorage.fontdata);
 	}
 	resetMissingCharacterWarning();
 
 	//load last auto-save
-    if (localStorage.bitsy_color_game_data) {
+	var gamedataStorage = Store.get('game_data');
+	if (gamedataStorage) {
 		//console.log("~~~ found old save data! ~~~");
-		//console.log(localStorage.game_data);
-        document.getElementById("game_data").value = localStorage.bitsy_color_game_data;
+		//console.log(gamedataStorage);
+		document.getElementById("game_data").value = gamedataStorage;
 		on_game_data_change_core();
 	}
 	else {
@@ -1027,7 +1032,7 @@ function start() {
 
 	// load panel preferences
 	var prefs = getPanelPrefs();
-    localStorage.bitsy_color_panel_prefs = JSON.stringify(prefs); // save loaded prefs
+	Store.set('panel_prefs', prefs); // save loaded prefs
 	var sortedWorkspace = prefs.workspace.sort( function(a,b) { return a.position - b.position; } );
 	var editorContent = document.getElementById("editorContent");
 	for(i in sortedWorkspace) {
@@ -1062,13 +1067,6 @@ function start() {
 		refreshGameData();
 		updatePaletteOptionsFromGameData();
 	});
-
-	// init paint explorer
-	paintExplorer = new PaintExplorer("paintExplorer",selectPaint);
-	paintExplorer.Refresh(TileType.Avatar);
-	paintExplorer.ChangeSelection("A");
-	paintTool.explorer = paintExplorer;
-	paintExplorer.SetDisplayCaptions( true );
 
 	//unsupported feature stuff
 	if (hasUnsupportedFeatures() && !isPortraitOrientation()) {
@@ -1122,11 +1120,11 @@ function start() {
 	// on_change_color_sprite();
 
 	// save latest version used by editor (for compatibility)
-	localStorage.engine_version = JSON.stringify( version );
+	Store.set('engine_version', version);
 
 	// load saved export settings
-    if (localStorage.bitsy_color_export_settings ) {
-        export_settings = JSON.parse(localStorage.bitsy_color_export_settings );
+	export_settings = Store.get('export_settings', export_settings);
+	if (export_settings) {
 		document.getElementById("pageColor").value = export_settings.page_color;
 	}
 
@@ -1151,10 +1149,15 @@ function start() {
 	}
 
 	// prepare dialog tool
-	openDialogTool(titleDialogId); // start with the title open
+	openDialogTool(titleDialogId, undefined, false); // start with the title open
 	alwaysShowDrawingDialog = document.getElementById("dialogAlwaysShowDrawingCheck").checked;
 
 	initLanguageOptions();
+
+	// find tool
+	findTool = new FindTool({
+		mainElement : document.getElementById("findPanelMain"),
+	});
 }
 
 function newDrawing() {
@@ -1225,7 +1228,6 @@ function on_drawing_name_change() {
 
 	// update display name for thumbnail
 	var displayName = obj.name ? obj.name : getCurPaintModeStr() + " " + drawing.id;
-	paintExplorer.ChangeThumbnailCaption(drawing.id, displayName);
 
 	// make sure items referenced in scripts update their names
 	if(drawing.type === TileType.Item) {
@@ -1288,8 +1290,6 @@ function on_palette_name_change(event) {
 }
 
 function selectRoom(roomId) {
-	console.log("SELECT ROOM " + roomId);
-
 	// ok watch out this is gonna be hacky
 	var ids = sortedRoomIdList();
 
@@ -1307,13 +1307,14 @@ function selectRoom(roomId) {
 		roomTool.drawEditMap();
 		paintTool.updateCanvas();
 		updateRoomPaletteSelect();
-		paintExplorer.Refresh( paintTool.drawing.type, true /*doKeepOldThumbnails*/ );
 
 		if (drawing.type === TileType.Tile) {
 			updateWallCheckboxOnCurrentTile();
 		}
 
 		updateRoomName();
+
+		events.Raise("select_room", { id: roomId });
 	}
 }
 
@@ -1325,13 +1326,14 @@ function nextRoom() {
 	roomTool.drawEditMap();
 	paintTool.updateCanvas();
 	updateRoomPaletteSelect();
-	paintExplorer.Refresh( paintTool.drawing.type, true /*doKeepOldThumbnails*/ );
 
 	if (drawing.type === TileType.Tile) {
 		updateWallCheckboxOnCurrentTile();
 	}
 
 	updateRoomName();
+
+	events.Raise("select_room", { id: curRoom });
 }
 
 function prevRoom() {
@@ -1343,13 +1345,14 @@ function prevRoom() {
 	roomTool.drawEditMap();
 	paintTool.updateCanvas();
 	updateRoomPaletteSelect();
-	paintExplorer.Refresh( paintTool.drawing.type, true /*doKeepOldThumbnails*/ );
 
 	if (drawing.type === TileType.Tile) {
 		updateWallCheckboxOnCurrentTile();
 	}
 
 	updateRoomName();
+
+	events.Raise("select_room", { id: curRoom });
 }
 
 function duplicateRoom() {
@@ -1394,13 +1397,7 @@ function duplicateRoom() {
 
 	updateRoomName();
 
-	// add new exit destination option to exits panel
-	var select = document.getElementById("exitDestinationSelect");
-	var option = document.createElement("option");
-	var roomLabel = localization.GetStringOrFallback("room_label", "room");
-	option.text = roomLabel + " " + newRoomId;
-	option.value = newRoomId;
-	select.add(option);
+	events.Raise("select_room", { id: curRoom });
 }
 
 function duplicateExit(exit) {
@@ -1471,6 +1468,8 @@ function newRoom() {
 	// option.text = roomLabel + " " + roomId;
 	// option.value = roomId;
 	// select.add(option);
+
+	events.Raise("select_room", { id: curRoom });
 }
 
 function deleteRoom() {
@@ -1554,7 +1553,8 @@ function next() {
 	else if( drawing.type == TileType.Item ) {
 		nextItem();
 	}
-	paintExplorer.ChangeSelection( drawing.id );
+
+	events.Raise("select_drawing", { id: drawing.id, type: drawing.type });
 }
 
 function prev() {
@@ -1567,7 +1567,8 @@ function prev() {
 	else if( drawing.type == TileType.Item ) {
 		prevItem();
 	}
-	paintExplorer.ChangeSelection( drawing.id );
+
+	events.Raise("select_drawing", { id: drawing.id, type: drawing.type });
 }
 
 function copyDrawingData(sourceDrawingData) {
@@ -1765,6 +1766,7 @@ function reloadItem() {
 
 function deleteDrawing() {
 	paintTool.deleteDrawing();
+	events.Raise("select_drawing", { id: paintTool.drawing.id, type: paintTool.drawing.type });
 }
 
 function toggleToolBar(e) {
@@ -1859,8 +1861,14 @@ function updatePreviewDialogButton() {
 
 function togglePaintGrid(e) {
 	paintTool.drawPaintGrid = e.target.checked;
-	iconUtils.LoadIcon(document.getElementById("paintGridIcon"), paintTool.drawPaintGrid ? "visibility" : "visibility_off");
+	updatePaintGridCheck(paintTool.drawPaintGrid);
 	paintTool.updateCanvas();
+	setPanelSetting("paintPanel", "grid", paintTool.drawPaintGrid);
+}
+
+function updatePaintGridCheck(checked) {
+	document.getElementById("paintGridCheck").checked = checked;
+	iconUtils.LoadIcon(document.getElementById("paintGridIcon"), checked ? "visibility" : "visibility_off");
 }
 
 function togglePaintGrid(e) {
@@ -1871,8 +1879,14 @@ function togglePaintGrid(e) {
 
 function toggleMapGrid(e) {
 	roomTool.drawMapGrid = e.target.checked;
-	iconUtils.LoadIcon(document.getElementById("roomGridIcon"), roomTool.drawMapGrid ? "visibility" : "visibility_off");
+	updateRoomGridCheck(roomTool.drawMapGrid);
 	roomTool.drawEditMap();
+	setPanelSetting("roomPanel", "grid", roomTool.drawMapGrid);
+}
+
+function updateRoomGridCheck(checked) {
+	document.getElementById("roomGridCheck").checked = checked;
+	iconUtils.LoadIcon(document.getElementById("roomGridIcon"), checked ? "visibility" : "visibility_off");
 }
 
 function toggleCollisionMap(e) {
@@ -1891,7 +1905,6 @@ function toggleFontDataVisibility(e) {
 /* PALETTE STUFF */
 var colorPicker = null;
 var paletteTool = null;
-var paintExplorer = null;
 
 function updateRoomPaletteSelect() {
 	var palOptions = document.getElementById("roomPaletteSelect").options;
@@ -1965,7 +1978,6 @@ function roomPaletteChange(event) {
 	markerTool.SetRoom(curRoom);
 	roomTool.drawEditMap();
 	paintTool.updateCanvas();
-	paintExplorer.Refresh( paintTool.drawing.type, true /*doKeepOldThumbnails*/ );
 }
 
 function updateDrawingNameUI() {
@@ -1990,10 +2002,6 @@ function on_paint_avatar() {
 	drawing.type = TileType.Avatar;
 	drawing.id = "A";
 	paintTool.reloadDrawing();
-	if(paintExplorer != null) { 
-		paintExplorer.Refresh( paintTool.drawing.type );
-		paintExplorer.ChangeSelection( paintTool.drawing.id );
-	}
 
 	on_paint_avatar_ui_update();
 }
@@ -2005,10 +2013,7 @@ function on_paint_avatar_ui_update() {
 	document.getElementById("animationOuter").setAttribute("style","display:block;");
 	updateDrawingNameUI(false);
 	document.getElementById("paintOptionAvatar").checked = true;
-	document.getElementById("paintExplorerOptionAvatar").checked = true;
 	document.getElementById("showInventoryButton").setAttribute("style","display:none;");
-	document.getElementById("paintExplorerAdd").setAttribute("style","display:none;");
-	document.getElementById("paintExplorerFilterInput").value = "";
 
 	var disableForAvatarElements = document.getElementsByClassName("disableForAvatar");
 	for (var i = 0; i < disableForAvatarElements.length; i++) {
@@ -2021,8 +2026,6 @@ function on_paint_tile() {
 	tileIndex = 0;
 	drawing.id = sortedTileIdList()[tileIndex];
 	paintTool.reloadDrawing();
-	paintExplorer.Refresh( paintTool.drawing.type );
-	paintExplorer.ChangeSelection( paintTool.drawing.id );
 
 	on_paint_tile_ui_update();
 }
@@ -2034,10 +2037,7 @@ function on_paint_tile_ui_update() {
 	updateDrawingNameUI(true);
 	//document.getElementById("animation").setAttribute("style","display:block;");
 	document.getElementById("paintOptionTile").checked = true;
-	document.getElementById("paintExplorerOptionTile").checked = true;
 	document.getElementById("showInventoryButton").setAttribute("style","display:none;");
-	document.getElementById("paintExplorerAdd").setAttribute("style","display:inline-block;");
-	document.getElementById("paintExplorerFilterInput").value = "";
 
 	var disableForAvatarElements = document.getElementsByClassName("disableForAvatar");
 	for (var i = 0; i < disableForAvatarElements.length; i++) {
@@ -2057,8 +2057,6 @@ function on_paint_sprite() {
 	drawing.id = sortedSpriteIdList()[spriteIndex];
 	paintTool.curDrawingFrameIndex = 0;
 	paintTool.reloadDrawing();
-	paintExplorer.Refresh( paintTool.drawing.type );
-	paintExplorer.ChangeSelection( paintTool.drawing.id );
 
 	on_paint_sprite_ui_update();
 }
@@ -2070,10 +2068,7 @@ function on_paint_sprite_ui_update() {
 	updateDrawingNameUI(true);
 	//document.getElementById("animation").setAttribute("style","display:block;");
 	document.getElementById("paintOptionSprite").checked = true;
-	document.getElementById("paintExplorerOptionSprite").checked = true;
 	document.getElementById("showInventoryButton").setAttribute("style","display:none;");
-	document.getElementById("paintExplorerAdd").setAttribute("style","display:inline-block;");
-	document.getElementById("paintExplorerFilterInput").value = "";
 
 	var disableForAvatarElements = document.getElementsByClassName("disableForAvatar");
 	for (var i = 0; i < disableForAvatarElements.length; i++) {
@@ -2089,8 +2084,6 @@ function on_paint_item() {
 	console.log(drawing.id);
 	paintTool.curDrawingFrameIndex = 0;
 	paintTool.reloadDrawing();
-	paintExplorer.Refresh( paintTool.drawing.type );
-	paintExplorer.ChangeSelection( paintTool.drawing.id );
 
 	on_paint_item_ui_update();
 }
@@ -2102,20 +2095,12 @@ function on_paint_item_ui_update() {
 	updateDrawingNameUI(true);
 	//document.getElementById("animation").setAttribute("style","display:block;");
 	document.getElementById("paintOptionItem").checked = true;
-	document.getElementById("paintExplorerOptionItem").checked = true;
 	document.getElementById("showInventoryButton").setAttribute("style","display:inline-block;");
-	document.getElementById("paintExplorerAdd").setAttribute("style","display:inline-block;");
-	document.getElementById("paintExplorerFilterInput").value = "";
 
 	var disableForAvatarElements = document.getElementsByClassName("disableForAvatar");
 	for (var i = 0; i < disableForAvatarElements.length; i++) {
 		disableForAvatarElements[i].disabled = false;
 	}
-}
-
-function paintExplorerFilterChange( e ) {
-	console.log("paint explorer filter : " + e.target.value);
-	paintExplorer.Refresh( paintTool.drawing.type, true, e.target.value );
 }
 
 function editDrawingAtCoordinate(x,y) {
@@ -2131,7 +2116,6 @@ function editDrawingAtCoordinate(x,y) {
 
 		var drawing = new DrawingId( spriteId === "A" ? TileType.Avatar : TileType.Sprite, spriteId );
 		paintTool.selectDrawing( drawing );
-		paintExplorer.RefreshAndChangeSelection( drawing );
 		return;
 	}
 
@@ -2141,7 +2125,6 @@ function editDrawingAtCoordinate(x,y) {
 		on_paint_item_ui_update();
 		var drawing = new DrawingId( TileType.Item, item.id );
 		paintTool.selectDrawing( drawing );
-		paintExplorer.RefreshAndChangeSelection( drawing );
 		return;
 	}
 
@@ -2151,7 +2134,6 @@ function editDrawingAtCoordinate(x,y) {
 		on_paint_tile_ui_update(); // really wasteful probably
 		var drawing = new DrawingId( TileType.Tile, tileId );
 		paintTool.selectDrawing( drawing );
-		paintExplorer.RefreshAndChangeSelection( drawing );
 		return;
 	}
 }
@@ -2182,11 +2164,6 @@ function selectColor() {
 }
 
 function selectPaint() {
-    console.log(this);
-	if (drawing.id === this.value) {
-		showPanel("paintPanel", "paintExplorerPanel");
-	}
-
 	drawing.id = this.value;
 	if( drawing.type === TileType.Tile ) {
 		tileIndex = sortedTileIdList().indexOf( drawing.id );
@@ -2286,6 +2263,7 @@ function on_game_data_change_core() {
 
 	// TODO RENDERER : refresh images
 
+	roomIndex = 0;
 	roomTool.drawEditMap();
 
 	drawing.type = curPaintMode;
@@ -2309,7 +2287,7 @@ function on_game_data_change_core() {
 			name : fontName,
 			fontdata : fontManager.GetData(fontName)
 		};
-        localStorage.bitsy_color_custom_font = JSON.stringify(fontStorage);
+		Store.set('custom_font', fontStorage);
 	}
 
 	updateInventoryUI();
@@ -2323,10 +2301,7 @@ function on_game_data_change_core() {
 }
 
 function updateFontSelectUI() {
-	var fontStorage = null;
-    if (localStorage.bitsy_color_custom_font != null) {
-        fontStorage = JSON.parse(localStorage.bitsy_color_custom_font);
-	}
+	var fontStorage = Store.get('custom_font', null);
 
 	var fontSelect = document.getElementById("fontSelect");
 
@@ -2629,7 +2604,7 @@ function togglePanelUI(id, visible, insertNextToId) {
 		}
 	}
 
-	document.getElementById(id).style.display = visible ? "inline-block" : "none";
+	document.getElementById(id).style.display = visible ? "inline-flex" : "none";
 
 	if (visible) {
 		cardElement.scrollIntoView();
@@ -2663,12 +2638,6 @@ function afterHidePanel(id) {
 	}
 }
 
-// DEPRECATED
-function savePanelPref(id,visible) {
-    var prefs = localStorage.bitsy_color_panel_prefs == null ? {} : JSON.parse(localStorage.bitsy_color_panel_prefs );
-	prefs[id] = visible;
-    localStorage.setItem( "bitsy_color_panel_prefs", JSON.stringify(prefs) );
-}
 
 function updatePanelPrefs() {
 	// console.log("UPDATE PREFS");
@@ -2677,7 +2646,7 @@ function updatePanelPrefs() {
 	// console.log(prefs);
 
 	var editorContent = document.getElementById("editorContent");
-	var cards = editorContent.getElementsByClassName("panel");
+	var cards = editorContent.getElementsByClassName("bitsy-workbench-item");
 
 	for(var i = 0; i < cards.length; i++) {
 		var card = cards[i];
@@ -2694,10 +2663,41 @@ function updatePanelPrefs() {
 	}
 
 	// console.log(prefs);
-    localStorage.bitsy_color_panel_prefs = JSON.stringify( prefs );
-	// console.log(localStorage.panel_prefs);
+	Store.set('panel_prefs', prefs);
+	// console.log(Store.get('panel_prefs'));
 }
 
+function getPanelSetting(panelId, settingId) {
+	var settingValue = null;
+
+	var prefs = getPanelPrefs();
+
+	for (var i = 0; i < prefs.workspace.length; i++ ) {
+		if (prefs.workspace[i].id === panelId) {
+			if (prefs.workspace[i].setting != undefined && prefs.workspace[i].setting != null) {
+				settingValue = prefs.workspace[i].setting[settingId];
+			}
+		}
+	}
+
+	return settingValue;
+}
+
+function setPanelSetting(panelId, settingId, settingValue) {
+	var prefs = getPanelPrefs();
+
+	for (var i = 0; i < prefs.workspace.length; i++ ) {
+		if (prefs.workspace[i].id === panelId) {
+			if (prefs.workspace[i].setting === undefined || prefs.workspace[i].setting === null) {
+				prefs.workspace[i].setting = {};
+			}
+
+			prefs.workspace[i].setting[settingId] = settingValue;
+		}
+	}
+
+	Store.set('panel_prefs', prefs);
+}
 
 var gifRecordingInterval = null;
 function startRecordingGif() {
@@ -2893,8 +2893,6 @@ function importGameFromFile(e) {
 		// change game data & reload everything
         document.getElementById("game_data").value = gameDataStr;
 		on_game_data_change();
-
-		paintExplorer.Refresh(drawing.type);
 	}
 }
 
@@ -2918,7 +2916,7 @@ function importFontFromFile(e) {
 			name : customFontName,
 			fontdata : fileText
 		};
-        localStorage.bitsy_color_custom_font = JSON.stringify(fontStorage);
+		Store.set('custom_font', fontStorage);
 
 		refreshGameData();
 		updateFontSelectUI();
@@ -3185,7 +3183,7 @@ function on_change_color_page() {
 	document.getElementById("roomPanel").style.background = hex;
 	export_settings.page_color = hex;
 
-	localStorage.bitsy_color_export_settings = JSON.stringify( export_settings );
+	Store.set('export_settings', export_settings);
 }
 
 function getComplimentingColor(palId) {
@@ -3223,7 +3221,7 @@ function grabCard(e) {
 	if (grabbedPanel.card != null) return;
 
 	grabbedPanel.card = e.target;
-	while(!grabbedPanel.card.classList.contains("panel") && !(grabbedPanel.card == null)) {
+	while(!grabbedPanel.card.classList.contains("bitsy-workbench-item") && !(grabbedPanel.card == null)) {
 		grabbedPanel.card = grabbedPanel.card.parentElement;
 	}
 
@@ -3274,23 +3272,7 @@ function panel_onMouseMove(e) {
 
 	var editorContent = document.getElementById("editorContent");
 	var editorContentWidth = editorContent.getBoundingClientRect().width;
-	var otherCards = editorContent.getElementsByClassName("panel");
-
-	// var cardCollection = editorContent.getElementsByClassName("panel");
-	// var otherCards = [];
-	// for (var i = 0; i < cardCollection.length; i++) {
-	// 	otherCards.push(cardCollection[i]);
-	// }
-	// // console.log(otherCards);
-
-	// // hacky fix for arabic -- need better solution
-	// if (curEditorLanguageCode === "ar") {
-	// 	// otherCards.reverse();
-	// 	cardCenter.x = editorContentWidth - cardCenter.x;
-	// }
-
-	// console.log(cardCenter);
-	// console.log("---");
+	var otherCards = editorContent.getElementsByClassName("bitsy-workbench-item");
 
 	for(var j = 0; j < otherCards.length; j++) {
 		var other = otherCards[j];
@@ -3505,9 +3487,6 @@ function hackyUpdatePlaceholderText() {
 	for (var i = 0; i < titleTextBoxes.length; i++) {
 		titleTextBoxes[i].placeholder = titlePlaceholder;
 	}
-
-	var filterPlaceholder = localization.GetStringOrFallback("filter_placeholder", "filter drawings");
-	document.getElementById("paintExplorerFilterInput").placeholder = filterPlaceholder;
 }
 
 var curEditorLanguageCode = "en";
@@ -3540,14 +3519,8 @@ function on_change_font(e) {
 		switchFont(e.target.value, true /*doPickTextDirection*/);
 	}
 	else {
-        if (localStorage.bitsy_color_custom_font != null) {
-            var fontStorage = JSON.parse(localStorage.bitsy_color_custom_font);
-			switchFont(fontStorage.name, true /*doPickTextDirection*/);
-		}
-		else {
-			// fallback
-			switchFont("ascii_small", true /*doPickTextDirection*/);
-		}
+		var fontStorage = Store.get('custom_font', { name: 'ascii_small' });
+		switchFont(fontStorage.name, true /*doPickTextDirection*/);
 	}
 	updateFontDescriptionUI();
 	// updateEditorTextDirection();
@@ -3714,3 +3687,6 @@ function hideFontMissingCharacterWarning() {
 
 /* ICONS */
 var iconUtils = new IconUtils(); // TODO : move?
+
+/* NEW FIND TOOL */
+var findTool = null;

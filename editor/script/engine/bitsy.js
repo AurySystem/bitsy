@@ -64,7 +64,7 @@ var spriteStartLocations = {};
 /* VERSION */
 var version = {
 	major: 7, // major changes
-	minor: 2, // smaller changes
+	minor: 4, // smaller changes
 	devBuildPhase: "RELEASE",
 };
 function getEngineVersion() {
@@ -2050,6 +2050,7 @@ function parseTile(lines, i) {
 	//tile data
 	tile[id] = {
 		id : id,
+		type : "TIL",
 		drw : drwId, //drawing id
 		col : colorIndex,
 		animation : {
@@ -2125,6 +2126,7 @@ function parseSprite(lines, i) {
 	//sprite data
 	sprite[id] = {
 		id : id,
+		type : (id === "A") ? "AVA" : "SPR",
 		drw : drwId, //drawing id
 		col : colorIndex,
 		dlg : dialogId,
@@ -2195,6 +2197,7 @@ function parseItem(lines, i) {
 	//item data
 	item[id] = {
 		id : id,
+		type : "ITM",
 		drw : drwId, //drawing id
 		col : colorIndex,
 		dlg : dialogId,
@@ -2285,7 +2288,7 @@ function parseScript(lines, i, backCompatPrefix, compatibilityFlags) {
 
 	var results = scriptUtils.ReadDialogScript(lines,i);
 
-	dialog[id] = { src:results.script, name:null };
+	dialog[id] = { src: results.script, name: null, id: id, };
 
 	if (compatibilityFlags.convertImplicitSpriteDialogIds) {
 		// explicitly hook up dialog that used to be implicitly

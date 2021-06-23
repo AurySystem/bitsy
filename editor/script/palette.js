@@ -192,6 +192,11 @@ function PaletteTool(colorPicker,colorCallback,nameFieldId) { //,colorCallback
     }
 
 
+	this.Select = function(id) {
+		curPaletteId = id;
+		UpdatePaletteUI();
+	};
+
 	function SelectPrev() {
 		var idList = sortedPaletteIdList();
 		var index = idList.indexOf(curPaletteId);
@@ -228,6 +233,7 @@ function PaletteTool(colorPicker,colorCallback,nameFieldId) { //,colorCallback
 
 		palette[ id ] = {
 			name : null,
+			id : id,
 			colors : [
 			hslToRgb(Math.random(), 1.0, 0.5),
 			hslToRgb(Math.random(), 1.0, 0.5),
@@ -251,8 +257,9 @@ function PaletteTool(colorPicker,colorCallback,nameFieldId) { //,colorCallback
 
 		var id = nextPaletteId();
 		palette[ id ] = {
+			id : id,
 			name : null,
-			colors : []
+			colors : [],
 		};
 
 		for (var i = 0; i < curColors.length; i++) {
