@@ -5,6 +5,7 @@ function GraphicsSystem() {
 	var ctx;
 
 	var scale;
+	var scales = [];
 	var textScale;
 	var palette = [];
 	var images = [];
@@ -81,7 +82,7 @@ function GraphicsSystem() {
 
 	// todo : rename this since it doesn't always create a totally new canvas?
 	this.createImage = function(id, width, height, pixels, useTextScale) {
-		var imageScale = useTextScale === true ? textScale : scale;
+		var imageScale = useTextScale === true ? textScale : scales[id] !== undefined && scales[id] > 0? scales[id] :scale;
 		var widthScaled = width * imageScale;
 		var heightScaled = height * imageScale;
 
@@ -129,6 +130,10 @@ function GraphicsSystem() {
 		imageFillColors[id] = color;
 	};
 
+	this.setImageScale = function(id, s) {
+		scales[id] = s;
+	};
+	
 	this.drawImage = function(id, x, y, destId) {
 		if (!images[id]) {
 			bitsyLog("image doesn't exist: " + id, "graphics");
@@ -141,7 +146,6 @@ function GraphicsSystem() {
 			var destCanvas = images[destId];
 			destCtx = destCanvas.getContext("2d");
 		}
-
 		destCtx.drawImage(images[id], x * scale, y * scale, images[id].width, images[id].height);
 	};
 

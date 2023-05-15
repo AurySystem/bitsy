@@ -38,7 +38,6 @@ function renderDrawing(drawing) {
 function renderTileFromDrawingData(drawingData, col, bgc) {
     var tilesize = drawingData.length;
 	var tileId = bitsy.tile(tilesize);
-    var scale = Math.ceil(4 / (tilesize / 8));
 
 	var backgroundColor = tileColorStartIndex + bgc;
 	var foregroundColor = tileColorStartIndex + col;

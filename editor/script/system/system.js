@@ -51,6 +51,7 @@ var mapsize = 16;
 var width = mapsize * tilesize;
 var height = mapsize * tilesize;
 var scale = 4;
+var scales = [];
 var textScale = 2;
 
 /* SYSTEM */
@@ -272,6 +273,7 @@ function BitsySystem(name) {
 					bitsyLog("tile changed? " + tile, "system");
 					let sizeTile = Math.sqrt(self._dump()[tile].length);
 					// update tile image
+					graphics.setImageScale(tile,scales[tile]);
 					graphics.createImage(tile, sizeTile, sizeTile, self._dump()[tile]);
 				}
 			}
@@ -627,12 +629,15 @@ function BitsySystem(name) {
 		}
 	};
 
-	this.tile = function(tilesize) {
-		return self._allocate({
+	this.tile = function(tilesize, scale) {
+		let id = self._allocate({
 			start: tilePoolStart,
 			max: tilePoolSize,
 			size: tilesize != undefined? (tilesize * tilesize) : (self.TILE_SIZE * self.TILE_SIZE)
 		});
+		if(scale === undefined)	scale = Math.ceil(4 / (tilesize / 8));
+		scales[id] = scale;
+    	return id;
 	};
 
 	this.delete = function(tile) {
