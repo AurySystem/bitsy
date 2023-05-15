@@ -10,13 +10,35 @@ function GraphicsSystem() {
 	var images = [];
 	var imageFillColors = [];
 
+	function hexToRgb(hex) {
+		// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+		var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+		hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+			return r + r + g + g + b + b;
+		});
+		return [
+			parseInt(hex.substring(1,3), 16),
+			parseInt(hex.substring(3,5), 16),
+			parseInt(hex.substring(5,7), 16)
+		];
+	}
 	function makeFillStyle(color, isTransparent) {
-		var i = color * 3;
-		if (isTransparent) {
-			return "rgba(" + palette[i + 0] + "," + palette[i + 1] + "," + palette[i + 2] + ", 0)";
-		}
-		else {
-			return "rgb(" + palette[i + 0] + "," + palette[i + 1] + "," + palette[i + 2] + ")";
+		if(typeof color == 'string'){
+			var raw = hexToRgb(color);
+			if (isTransparent) {
+				return "rgba(" + raw[0] + "," + raw[1] + "," + raw[2] + ", 0)";
+			}
+			else {
+				return "rgb(" + raw[0] + "," + raw[1] + "," + raw[2] + ")";
+			}
+		} else {
+			var i = color * 3;
+			if (isTransparent) {
+				return "rgba(" + palette[i + 0] + "," + palette[i + 1] + "," + palette[i + 2] + ", 0)";
+			}
+			else {
+				return "rgb(" + palette[i + 0] + "," + palette[i + 1] + "," + palette[i + 2] + ")";
+			}
 		}
 	}
 

@@ -21,27 +21,59 @@ function renderTileToCanvas(drawing, frameIndex) {
 
 	// clamp tile colors to available palette size
 	var bgc = Math.min(palColors.length - 1, Math.max(0, drawing.bgc));
-	var col = Math.min(palColors.length - 1, Math.max(0, drawing.col));
+	// var col = Math.min(palColors.length - 1, Math.max(0, drawing.col));
+	var tileSize = tilesize;
+	if (frameData != undefined) {
+		tileSize = frameData.length;
+	}
+    var scale = Math.ceil(4 / (tilesize / 8));
+	
+    var remappedColor = [0,0,0]
+
+	// console.log(drawing.col)
+    if (typeof (drawing.col) === "string") {
+        var temp = hexToRgb(drawing.col);
+        remappedColor[0] = temp.r;
+        remappedColor[1] = temp.g;
+        remappedColor[2] = temp.b;
+    } else {
+        remappedColor = palColors[Math.min(palColors.length - 1, Math.max(0, drawing.col))];
+    }
 
 	// draw
 	var tileThumbCanvas = document.createElement("canvas");
-	tileThumbCanvas.width = tilesize * scale;
-	tileThumbCanvas.height = tilesize * scale;
+	tileThumbCanvas.width = tileSize * scale;
+	tileThumbCanvas.height = tileSize * scale;
 
 	var ctx = tileThumbCanvas.getContext("2d");
 	ctx.fillStyle = "rgb(" + palColors[bgc][0] + "," + palColors[bgc][1] + "," + palColors[bgc][2] + ")";
-	ctx.fillRect(0, 0, tilesize * scale, tilesize * scale);
-
-	ctx.fillStyle = "rgb(" + palColors[col][0] + "," + palColors[col][1] + "," + palColors[col][2] + ")";
+	ctx.fillRect(0, 0, tileSize * scale, tileSize * scale);
+	
+	ctx.fillStyle = "rgb(" + remappedColor[0] + "," + remappedColor[1] + "," + remappedColor[2] + ")";
 
 	if (frameData != undefined) {
-		for (var y = 0; y < tilesize; y++) {
-			for (var x = 0; x < tilesize; x++) {
+		let colors = [];
+		for (var y = 0; y < tileSize; y++) {
+			for (var x = 0; x < tileSize; x++) {
 				if (frameData[y][x] === 1) {
 					ctx.fillRect(x * scale, y * scale, scale, scale);
+				}else if(frameData[y][x] != 0){
+					colors.push(frameData[y][x]);
 				}
 			}
 		}
+		for(let c = 0; c < colors.length; c++){
+			let col = Math.min(palColors.length - 1, Math.max(0, colors[c]));
+			ctx.fillStyle = "rgb(" + palColors[col][0] + "," + palColors[col][1] + "," + palColors[col][2] + ")";
+			for (var y = 0; y < tileSize; y++) {
+				for (var x = 0; x < tileSize; x++) {
+					if (frameData[y][x] === col) {
+						ctx.fillRect(x * scale, y * scale, scale, scale);
+					}
+				}
+			}
+		}
+		
 	}
 
 	return tileThumbCanvas;
@@ -253,6 +285,9 @@ function createDrawingThumbnailRenderer(source) {
 		for (i in roomColors) {
 			var hexStr = rgbToHex(roomColors[i][0], roomColors[i][1], roomColors[i][2]).slice(1);
 			hexPalette.push(hexStr);
+		}
+		if (drawing && drawing.id in source){
+			if(typeof(drawing.col) === "string") hexPalette.push(drawing.col.slice(1));
 		}
 
 		return hexPalette;

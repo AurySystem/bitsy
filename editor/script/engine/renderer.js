@@ -42,7 +42,7 @@ function renderTileFromDrawingData(drawingData, col, bgc) {
 
 	var backgroundColor = tileColorStartIndex + bgc;
 	var foregroundColor = tileColorStartIndex + col;
-    if(typeof col == 'string') {
+    if(typeof(col) === "string") {
         foregroundColor = col;
     }
 
@@ -54,7 +54,7 @@ function renderTileFromDrawingData(drawingData, col, bgc) {
 			if (px === 1) {
 				bitsy.set(tileId, (y * tilesize) + x, foregroundColor);
 			}
-			else {
+			else if (px !== 0){
 				bitsy.set(tileId, (y * tilesize) + x, tileColorStartIndex+px);
 			}
 		}

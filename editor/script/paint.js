@@ -161,12 +161,18 @@ function PaintTool(canvas, menuElement) {
 
 	//hacky hacky pain in the butt
 	function changePaintColor(e) {
+		// get palette of selected room
+		var selectedRoomId = state.room;
+		if (roomTool) {
+			selectedRoomId = roomTool.getSelected();
+		}
+		if (room[selectedRoomId] === undefined) {
+			selectedRoomId = "0";
+		}
         var testCol = e.target.value;
-        console.log(testCol);
         testCol.replace(/[^0-9]/g, "");
         if (testCol.trim !== "") {
-            console.log(testCol);
-            if (testCol < getPal(curPal()).length) {
+            if (testCol < getPal(room[selectedRoomId].pal).length) {
                 curPaintColor.value = parseInt(testCol);
                 if (curPaintColor.value == "NaN") {
                     curPaintColor.value = "";
@@ -182,7 +188,6 @@ function PaintTool(canvas, menuElement) {
             }
         }
         else { paintColorDummy = 0;}
-        console.log(paintColorDummy);
     }
 
 	this.updateCanvas = function() {
@@ -222,18 +227,18 @@ function PaintTool(canvas, menuElement) {
             remappedColor[1] = temp.g;
             remappedColor[2] = temp.b;
         } else {
-            remappedColor = getPal(curPal())[remap];
+            remappedColor = palColors[remap];
         }
 
 		//draw pixels
 		for (var x = 0; x < self.curTilesize; x++) {
 			for (var y = 0; y < self.curTilesize; y++) {
 				// draw alternate frame
-                if (self.isCurDrawingAnimated && curDrawingAltFrameData()[y][x] != 0 && curDrawingAltFrameData()[y][x] < getPal(curPal()).length && !isNaN(parseInt(curDrawingAltFrameData()[y][x]))) {
+                if (self.isCurDrawingAnimated && curDrawingAltFrameData()[y][x] != 0 && curDrawingAltFrameData()[y][x] < palColors.length && !isNaN(parseInt(curDrawingAltFrameData()[y][x]))) {
                     ctx.globalAlpha = 0.3;
 
 					if (curDrawingAltFrameData()[y][x] != 1) {
-						ctx.fillStyle = "rgb(" + getPal(curPal())[curDrawingAltFrameData()[y][x]][0] + "," + getPal(curPal())[curDrawingAltFrameData()[y][x]][1] + "," + getPal(curPal())[curDrawingAltFrameData()[y][x]][2] + ")";
+						ctx.fillStyle = "rgb(" + palColors[curDrawingAltFrameData()[y][x]][0] + "," + palColors[curDrawingAltFrameData()[y][x]][1] + "," + palColors[curDrawingAltFrameData()[y][x]][2] + ")";
 					}
 					else {
                         ctx.fillStyle = "rgb(" + remappedColor[0] + "," + remappedColor[1] + "," + remappedColor[2] + ")";
@@ -243,9 +248,9 @@ function PaintTool(canvas, menuElement) {
 					ctx.globalAlpha = 1;
 				}
 				// draw current frame
-                if (curDrawingData()[y][x] != 0 && curDrawingData()[y][x] < getPal(curPal()).length && !isNaN(parseInt(curDrawingData()[y][x]))) {
+                if (curDrawingData()[y][x] != 0 && curDrawingData()[y][x] < palColors.length && !isNaN(parseInt(curDrawingData()[y][x]))) {
 					if (curDrawingData()[y][x] != 1) {
-						ctx.fillStyle = "rgb(" + getPal(curPal())[curDrawingData()[y][x]][0] + "," + getPal(curPal())[curDrawingData()[y][x]][1] + "," + getPal(curPal())[curDrawingData()[y][x]][2] + ")";
+						ctx.fillStyle = "rgb(" + palColors[curDrawingData()[y][x]][0] + "," + palColors[curDrawingData()[y][x]][1] + "," + palColors[curDrawingData()[y][x]][2] + ")";
 					}
                     else {
                         ctx.fillStyle = "rgb(" + remappedColor[0] + "," + remappedColor[1] + "," + remappedColor[2] + ")";
@@ -277,7 +282,6 @@ function PaintTool(canvas, menuElement) {
         self.updateCanvas();
         updateDrawingData();
         refreshGameData();
-        roomTool.drawEditMap();
     }
 
     this.rotateDrawing = function (direction) {
@@ -322,7 +326,6 @@ function PaintTool(canvas, menuElement) {
         self.updateCanvas();
         updateDrawingData();
         refreshGameData();
-        roomTool.drawEditMap();
     }
 
     this.mirrorDrawing = function (direction) {
@@ -375,7 +378,6 @@ function PaintTool(canvas, menuElement) {
         self.updateCanvas();
         updateDrawingData();
         refreshGameData();
-        roomTool.drawEditMap();
     }
 
 	function curDrawingData() {

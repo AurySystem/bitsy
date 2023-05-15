@@ -217,6 +217,7 @@ function createDefaultFlags() {
 		VER_MIN: -1, // minor version number (-1 = no version information found)
 		// compatibility
 		ROOM_FORMAT: 0, // 0 = non-comma separated (original), 1 = comma separated (default)
+		DRAW_FORMAT: 0, // 0 = non-comma seperated (bitsy), 1 = comma seperated ()
 		DLG_COMPAT: 0, // 0 = default dialog behavior, 1 = pre-7.0 dialog behavior
 		// config
 		TXT_MODE: 0 // 0 = HIREZ (2x - default), 1 = LOREZ (1x)
@@ -585,6 +586,9 @@ function parseTile(parseState, world) {
 	while (i < lines.length && lines[i].length > 0) { // look for empty line
 		if (getType(lines[i]) === "COL") {
 			tileData.col = parseInt(getId(lines[i]));
+            if (isNaN(tileData.col)) {
+                tileData.col = getId(lines[i]);
+            }
 		}
 		else if (getType(lines[i]) === "BGC") {
 			var bgcId = getId(lines[i]);
@@ -643,6 +647,9 @@ function parseSprite(parseState, world) {
 		if (getType(lines[i]) === "COL") {
 			/* COLOR OFFSET INDEX */
 			spriteData.col = parseInt(getId(lines[i]));
+            if (isNaN(spriteData.col)) {
+                spriteData.col = getId(lines[i]);
+            }
 		}
 		else if (getType(lines[i]) === "BGC") {
 			/* BACKGROUND COLOR */
@@ -714,6 +721,9 @@ function parseItem(parseState, world) {
 		if (getType(lines[i]) === "COL") {
 			/* COLOR OFFSET INDEX */
 			itemData.col = parseInt(getArg(lines[i], 1));
+            if (isNaN(itemData.col)) {
+                itemData.col = getId(lines[i]);
+            }
 		}
 		else if (getType(lines[i]) === "BGC") {
 			/* BACKGROUND COLOR */
@@ -752,18 +762,30 @@ function parseDrawingCore(lines, i, drwId, world) {
 	frameList.push( [] ); //init first frame
 	var frameIndex = 0;
 	var y = 0;
-	while (y < bitsy.TILE_SIZE) {
+	
+	var drawingSize = 0;
+    while (!isNaN(parseInt(lines[i+drawingSize].charAt(0)))) {
+        drawingSize++;
+    }
+    
+    
+	while (y < drawingSize) {
 		var line = lines[i + y];
+    	if (world.flags.DRAW_FORMAT == 1) {
+    		line = line.split(",") || '';
+    	}
 		var row = [];
-
-		for (x = 0; x < bitsy.TILE_SIZE; x++) {
-			row.push(parseInt(line.charAt(x)));
+		
+		for (x = 0; x < drawingSize; x++) {
+			let parsedPixel = parseInt(line[x]);
+            parsedPixel = isNaN(parsedPixel) ? 0 : parsedPixel;
+            row.push(parsedPixel);
 		}
 
 		frameList[frameIndex].push(row);
 		y++;
 
-		if (y === bitsy.TILE_SIZE) {
+		if (y === drawingSize) {
 			i = i + y;
 			if (lines[i] != undefined && lines[i].charAt(0) === ">") {
 				// start next frame!

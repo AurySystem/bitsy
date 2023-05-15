@@ -270,8 +270,9 @@ function BitsySystem(name) {
 				var tile = tilePoolStart + i;
 				if (memory.blocks[tile] != undefined && memory.changed[tile]) {
 					bitsyLog("tile changed? " + tile, "system");
+					let sizeTile = Math.sqrt(self._dump()[tile].length);
 					// update tile image
-					graphics.createImage(tile, self.TILE_SIZE, self.TILE_SIZE, self._dump()[tile]);
+					graphics.createImage(tile, sizeTile, sizeTile, self._dump()[tile]);
 				}
 			}
 		}
@@ -473,10 +474,15 @@ function BitsySystem(name) {
 			memory.blocks[block] = memoryBlock.substring(0, index) + String.fromCharCode(value) + memoryBlock.substring(index + 1);
 		}
 		else {
+			if(typeof(value) === "string"){
+				if(value.charAt(0) === '#'){
+					memoryBlock[index] = value;// hex is just sparkling numbers
+				}
+			}
 			var value = parseInt(value);
 			if (!isNaN(value)) {
 				memoryBlock[index] = value;
-			}
+			} 
 		}
 		memory.changed[block] = true;
 	};
@@ -621,11 +627,11 @@ function BitsySystem(name) {
 		}
 	};
 
-	this.tile = function() {
+	this.tile = function(tilesize) {
 		return self._allocate({
 			start: tilePoolStart,
 			max: tilePoolSize,
-			size: (self.TILE_SIZE * self.TILE_SIZE)
+			size: tilesize != undefined? (tilesize * tilesize) : (self.TILE_SIZE * self.TILE_SIZE)
 		});
 	};
 
